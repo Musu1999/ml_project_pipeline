@@ -1,6 +1,7 @@
 """
 model_deploy.py
 Deploys HR Analytics XGBoost model to SageMaker endpoint.
+Uses sagemaker SDK to get the correct image URI automatically.
 """
 
 import os
@@ -9,9 +10,12 @@ import io
 import json
 import tarfile
 import boto3
+import sagemaker
+from sagemaker.sklearn.model import SKLearnModel
 from datetime import datetime
 from botocore.exceptions import ClientError
 
+# ── Config ────────────────────────────────────────────────────────────────────
 S3_BUCKET          = os.environ["S3_BUCKET"]
 PROJECT            = os.environ["PROJECT_NAME"]
 ENDPOINT_NAME      = os.environ["ENDPOINT_NAME"]
@@ -25,6 +29,8 @@ SRC_DIR        = os.path.dirname(SCRIPT_DIR)
 INFERENCE_PATH = os.path.join(SRC_DIR, "inference", "inference.py")
 
 
+# ── S3 helpers ────────────────────────────────────────────────────────────────
+
 def list_bucket(s3, bucket, prefix):
     keys = []
     paginator = s3.get_paginator("list_objects_v2")
@@ -37,12 +43,9 @@ def list_bucket(s3, bucket, prefix):
 def find_key(s3, bucket, prefix, filename):
     print(f"\n  Searching for '{filename}' under s3://{bucket}/{prefix}/")
     keys = list_bucket(s3, bucket, prefix)
-    print(f"  All files found:")
-    for k in keys:
-        print(f"    {k}")
     matches = [k for k in keys if k.endswith(filename)]
     if not matches:
-        print(f"\n  ERROR: '{filename}' not found. Re-run Workflow 3 first.")
+        print(f"  ERROR: '{filename}' not found. Re-run Workflow 3 first.")
         sys.exit(1)
     print(f"  Found: s3://{bucket}/{matches[0]}")
     return matches[0]
@@ -68,10 +71,13 @@ def read_inference_script():
     return data
 
 
+# ── Build model.tar.gz ────────────────────────────────────────────────────────
+
 def build_model_tar(s3):
     print("\n  Building model.tar.gz ...")
     model_key    = find_key(s3, S3_BUCKET, PROJECT, "xgboost_model.pkl")
     metadata_key = find_key(s3, S3_BUCKET, PROJECT, "metadata.json")
+
     model_bytes     = load_bytes_s3(s3, S3_BUCKET, model_key)
     metadata_bytes  = load_bytes_s3(s3, S3_BUCKET, metadata_key)
     inference_bytes = read_inference_script()
@@ -91,68 +97,54 @@ def build_model_tar(s3):
     tar_key = f"{DEPLOY_PREFIX}/model.tar.gz"
     upload_bytes(s3, S3_BUCKET, tar_key, tar_buf.read())
     print(f"  model.tar.gz ready: s3://{S3_BUCKET}/{tar_key}")
-    return tar_key
+    return f"s3://{S3_BUCKET}/{tar_key}"
 
 
-def get_image_uri():
-    return (
-        f"257758044811.dkr.ecr.{AWS_REGION}.amazonaws.com/"
-        f"sagemaker-scikit-learn:1.2-1-cpu-py3"
+# ── Deploy using SageMaker SDK ────────────────────────────────────────────────
+
+def deploy_endpoint(model_tar_uri):
+    print(f"\n  Deploying with SageMaker SDK ...")
+    print(f"  model_tar_uri : {model_tar_uri}")
+    print(f"  role          : {SAGEMAKER_ROLE_ARN}")
+    print(f"  endpoint      : {ENDPOINT_NAME}")
+
+    sm_session = sagemaker.Session(boto_session=boto3.Session(region_name=AWS_REGION))
+
+    model = SKLearnModel(
+        model_data       = model_tar_uri,
+        role             = SAGEMAKER_ROLE_ARN,
+        entry_point      = "inference.py",
+        framework_version= "1.2-1",
+        py_version       = "py3",
+        sagemaker_session= sm_session,
     )
 
-
-def deploy_endpoint(sm, model_name, config_name):
-    model_uri = f"s3://{S3_BUCKET}/{DEPLOY_PREFIX}/model.tar.gz"
-    image_uri = get_image_uri()
-
-    print(f"\n  Creating SageMaker model : {model_name}")
-    sm.create_model(
-        ModelName        = model_name,
-        ExecutionRoleArn = SAGEMAKER_ROLE_ARN,
-        PrimaryContainer = {
-            "Image":        image_uri,
-            "ModelDataUrl": model_uri,
-            "Environment": {
-                "SAGEMAKER_PROGRAM":             "inference.py",
-                "SAGEMAKER_SUBMIT_DIRECTORY":    model_uri,
-                "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
-                "SAGEMAKER_REGION":              AWS_REGION,
-            },
-        },
-    )
-
-    print(f"  Creating endpoint config : {config_name}")
-    sm.create_endpoint_config(
-        EndpointConfigName = config_name,
-        ProductionVariants = [{
-            "VariantName":          "primary",
-            "ModelName":            model_name,
-            "InitialInstanceCount": 1,
-            "InstanceType":         "ml.t2.medium",
-            "InitialVariantWeight": 1.0,
-        }],
-    )
-
+    # Check if endpoint already exists — update or create
+    sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
     try:
-        sm.describe_endpoint(EndpointName=ENDPOINT_NAME)
-        print(f"  Updating endpoint        : {ENDPOINT_NAME}")
-        sm.update_endpoint(EndpointName=ENDPOINT_NAME, EndpointConfigName=config_name)
+        sm_client.describe_endpoint(EndpointName=ENDPOINT_NAME)
+        endpoint_exists = True
+        print(f"  Endpoint exists — will update: {ENDPOINT_NAME}")
     except ClientError:
-        print(f"  Creating endpoint        : {ENDPOINT_NAME}")
-        sm.create_endpoint(EndpointName=ENDPOINT_NAME, EndpointConfigName=config_name)
+        endpoint_exists = False
+        print(f"  Endpoint does not exist — will create: {ENDPOINT_NAME}")
 
-    print(f"\n  Waiting for InService (5-10 min) ...")
-    sm.get_waiter("endpoint_in_service").wait(
-        EndpointName = ENDPOINT_NAME,
-        WaiterConfig = {"Delay": 30, "MaxAttempts": 40},
+    predictor = model.deploy(
+        initial_instance_count = 1,
+        instance_type          = "ml.t2.medium",
+        endpoint_name          = ENDPOINT_NAME,
+        wait                   = True,
     )
-    print(f"  Endpoint is InService: {ENDPOINT_NAME}")
 
+    print(f"  Endpoint InService: {ENDPOINT_NAME}")
+    return predictor
+
+
+# ── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-    s3 = boto3.client("s3",        region_name=AWS_REGION)
-    sm = boto3.client("sagemaker", region_name=AWS_REGION)
+    s3 = boto3.client("s3", region_name=AWS_REGION)
 
     print("\n=== 5-Model-Deploy: HR Analytics ===")
     print(f"  Endpoint     : {ENDPOINT_NAME}")
@@ -161,23 +153,24 @@ def main():
     print(f"  Project      : {PROJECT}")
     print(f"  inference.py : {INFERENCE_PATH}")
 
-    tar_key     = build_model_tar(s3)
-    model_name  = f"{PROJECT}-model-{ts}"
-    config_name = f"{PROJECT}-config-{ts}"
-    deploy_endpoint(sm, model_name, config_name)
+    # Step 1: Build model.tar.gz and upload to S3
+    model_tar_uri = build_model_tar(s3)
 
+    # Step 2: Deploy using SageMaker SDK (handles image URI automatically)
+    deploy_endpoint(model_tar_uri)
+
+    # Step 3: Save deployment info
     info = {
         "endpoint_name": ENDPOINT_NAME,
-        "model_name":    model_name,
-        "config_name":   config_name,
-        "model_tar":     f"s3://{S3_BUCKET}/{tar_key}",
+        "model_tar":     model_tar_uri,
         "timestamp":     ts,
         "region":        AWS_REGION,
         "instance_type": "ml.t2.medium",
     }
     upload_bytes(s3, S3_BUCKET, f"{DEPLOY_PREFIX}/deployment_info.json",
                  json.dumps(info, indent=2).encode())
-    print("\n  Deployment info saved.")
+
+    print(f"\n  Deployment info saved.")
     print("=== Deployment complete ===\n")
 
 
