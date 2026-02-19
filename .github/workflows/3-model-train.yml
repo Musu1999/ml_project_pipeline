@@ -1,0 +1,41 @@
+name: 3-Model-Train
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["2-Data-Preprocess"]
+    types:
+      - completed
+
+jobs:
+  train-model:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        pip install boto3 pandas numpy scikit-learn xgboost joblib
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ vars.AWS_REGION }}
+
+    - name: Train models
+      env:
+        S3_BUCKET: ${{ vars.S3_BUCKET }}
+      run: |
+        python src/model/model_train.py

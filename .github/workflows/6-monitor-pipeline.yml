@@ -1,0 +1,43 @@
+name: 6-Monitor-Pipeline
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["5-Model-Deploy"]
+    types:
+      - completed
+  schedule:
+    - cron: '0 */6 * * *'  # Run every 6 hours
+
+jobs:
+  monitor-pipeline:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        pip install boto3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ vars.AWS_REGION }}
+
+    - name: Monitor pipeline
+      env:
+        S3_BUCKET: ${{ vars.S3_BUCKET }}
+        ENDPOINT_NAME: ${{ vars.ENDPOINT_NAME }}
+      run: |
+        python src/monitoring/monitor_pipeline.py

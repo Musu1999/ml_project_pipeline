@@ -1,0 +1,42 @@
+name: 1-Data-Download
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/data/data_download.py'
+      - '.github/workflows/1-data-download.yml'
+
+jobs:
+  upload-data:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        pip install boto3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ vars.AWS_REGION }}
+
+    - name: Upload data to S3
+      env:
+        S3_BUCKET: ${{ vars.S3_BUCKET }}
+      run: |
+        python src/data/data_download.py

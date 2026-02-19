@@ -1,0 +1,41 @@
+name: 4-Model-Evaluate
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["3-Model-Train"]
+    types:
+      - completed
+
+jobs:
+  evaluate-model:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        pip install boto3 pandas numpy scikit-learn xgboost joblib
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ vars.AWS_REGION }}
+
+    - name: Evaluate model
+      env:
+        S3_BUCKET: ${{ vars.S3_BUCKET }}
+      run: |
+        python src/evaluation/model_evaluate.py
