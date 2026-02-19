@@ -38,5 +38,7 @@ jobs:
     - name: Upload data to S3
       env:
         S3_BUCKET: ${{ vars.S3_BUCKET }}
+        PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+        AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
       run: |
         python src/data/data_download.py

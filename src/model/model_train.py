@@ -1,10 +1,6 @@
 """
 model_train.py
-Downloads preprocessed splits from S3, trains the final Tuned XGBoost
-classifier (sole model from term2 project), uploads model + metrics to S3.
-
-Model: XGBClassifier(learning_rate=0.1, max_depth=3, n_estimators=50, subsample=0.8)
-       Best parameters from notebook GridSearchCV (Cell 39/59).
+Downloads preprocessed splits from S3, trains Tuned XGBoost, uploads model to S3.
 """
 
 import os
@@ -20,40 +16,46 @@ from sklearn.metrics import (
     f1_score, roc_auc_score, confusion_matrix,
 )
 
-# ── Config ───────────────────────────────────────────────────────────────────
+# ── Config ────────────────────────────────────────────────────────────────────
 S3_BUCKET    = os.environ["S3_BUCKET"]
-PROJECT      = os.environ.get("PROJECT_NAME", "hr-attrition")
+PROJECT      = os.environ["PROJECT_NAME"]        # MUST match exactly e.g. mousumi-hr-attrition
+AWS_REGION   = os.environ.get("AWS_DEFAULT_REGION", "ap-south-1")
 DATA_PREFIX  = f"{PROJECT}/data/processed"
 MODEL_PREFIX = f"{PROJECT}/models"
 RANDOM_STATE = 42
 
+print(f"  S3_BUCKET   : {S3_BUCKET}")
+print(f"  PROJECT     : {PROJECT}")
+print(f"  MODEL_PREFIX: {MODEL_PREFIX}")
+
 
 # ── S3 helpers ────────────────────────────────────────────────────────────────
 
-def load_npz(s3, bucket: str, key: str):
+def load_npz(s3, bucket, key):
     print(f"  Downloading: s3://{bucket}/{key}")
     obj  = s3.get_object(Bucket=bucket, Key=key)
     data = np.load(io.BytesIO(obj["Body"].read()), allow_pickle=True)
     return data["X"].astype(np.float32), data["y"].astype(int)
 
 
-def load_json(s3, bucket: str, key: str) -> dict:
+def load_json(s3, bucket, key):
+    print(f"  Downloading: s3://{bucket}/{key}")
     obj = s3.get_object(Bucket=bucket, Key=key)
     return json.loads(obj["Body"].read())
 
 
-def upload_bytes(s3, bucket: str, key: str, data: bytes) -> None:
+def upload_bytes(s3, bucket, key, data):
     s3.put_object(Bucket=bucket, Key=key, Body=data)
-    print(f"  Uploaded: s3://{bucket}/{key}")
+    print(f"  Uploaded   : s3://{bucket}/{key}")
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
     print("\n=== 3-Model-Train: HR Analytics (Tuned XGBoost) ===")
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name=AWS_REGION)
 
-    # Load data
+    # Load data from S3
     X_train, y_train = load_npz(s3, S3_BUCKET, f"{DATA_PREFIX}/train.npz")
     X_test,  y_test  = load_npz(s3, S3_BUCKET, f"{DATA_PREFIX}/test.npz")
     meta             = load_json(s3, S3_BUCKET, f"{DATA_PREFIX}/metadata.json")
@@ -63,7 +65,7 @@ def main():
     print(f"  Class balance — No Attrition: {(y_train==0).sum()}  "
           f"Attrition: {(y_train==1).sum()}")
 
-    # ── Tuned XGBoost — final model from notebook ──
+    # ── Tuned XGBoost (final model from notebook) ──
     model = XGBClassifier(
         learning_rate     = 0.1,
         max_depth         = 3,
@@ -83,10 +85,9 @@ def main():
     )
     print("  Training complete.")
 
-    # ── Evaluate on test set ──
-    y_pred = model.predict(X_test)
-    y_prob = model.predict_proba(X_test)[:, 1]
-
+    # ── Evaluate ──
+    y_pred  = model.predict(X_test)
+    y_prob  = model.predict_proba(X_test)[:, 1]
     acc     = accuracy_score(y_test, y_pred)
     prec    = precision_score(y_test, y_pred, zero_division=0)
     rec     = recall_score(y_test, y_pred, zero_division=0)
@@ -101,36 +102,28 @@ def main():
     print(f"    F1-Score  : {f1:.4f}")
     print(f"    ROC AUC   : {roc_auc:.4f}")
 
-    # Feature importances
-    importances = dict(zip(
-        meta["selected_features"],
-        model.feature_importances_.tolist()
-    ))
-    sorted_imp = dict(sorted(importances.items(), key=lambda x: x[1], reverse=True))
-    print(f"\n  Feature importances: {sorted_imp}")
+    importances = dict(zip(meta["selected_features"], model.feature_importances_.tolist()))
+    sorted_imp  = dict(sorted(importances.items(), key=lambda x: x[1], reverse=True))
+    print(f"  Feature importances: {sorted_imp}")
 
-    # ── Upload model ──
+    # ── Upload model to S3 ──
     model_buf = io.BytesIO()
     joblib.dump(model, model_buf)
     model_buf.seek(0)
     upload_bytes(s3, S3_BUCKET, f"{MODEL_PREFIX}/xgboost_model.pkl", model_buf.read())
 
-    # ── Upload metrics ──
+    # ── Upload metrics to S3 ──
     metrics = {
-        "model":                "TunedXGBoostClassifier",
-        "test_accuracy":        round(float(acc),     5),
-        "test_precision":       round(float(prec),    5),
-        "test_recall":          round(float(rec),     5),
-        "test_f1":              round(float(f1),      5),
-        "test_roc_auc":         round(float(roc_auc), 5),
-        "confusion_matrix":     cm,
-        "feature_importances":  sorted_imp,
-        "hyperparameters": {
-            "n_estimators":  50,
-            "max_depth":     3,
-            "learning_rate": 0.1,
-            "subsample":     0.8,
-        },
+        "model":               "TunedXGBoostClassifier",
+        "test_accuracy":       round(float(acc),     5),
+        "test_precision":      round(float(prec),    5),
+        "test_recall":         round(float(rec),     5),
+        "test_f1":             round(float(f1),      5),
+        "test_roc_auc":        round(float(roc_auc), 5),
+        "confusion_matrix":    cm,
+        "feature_importances": sorted_imp,
+        "hyperparameters":     {"n_estimators": 50, "max_depth": 3,
+                                "learning_rate": 0.1, "subsample": 0.8},
     }
     upload_bytes(s3, S3_BUCKET, f"{MODEL_PREFIX}/training_metrics.json",
                  json.dumps(metrics, indent=2).encode())

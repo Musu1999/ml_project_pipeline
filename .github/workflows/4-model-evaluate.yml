@@ -37,5 +37,7 @@ jobs:
     - name: Evaluate model
       env:
         S3_BUCKET: ${{ vars.S3_BUCKET }}
+        PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+        AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
       run: |
         python src/evaluation/model_evaluate.py

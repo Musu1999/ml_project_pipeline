@@ -37,5 +37,7 @@ jobs:
     - name: Train models
       env:
         S3_BUCKET: ${{ vars.S3_BUCKET }}
+        PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+        AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
       run: |
         python src/model/model_train.py

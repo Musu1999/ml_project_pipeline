@@ -7,7 +7,7 @@ on:
     types:
       - completed
   schedule:
-    - cron: '0 */6 * * *'  # Run every 6 hours
+    - cron: '0 */6 * * *'
 
 jobs:
   monitor-pipeline:
@@ -38,6 +38,8 @@ jobs:
     - name: Monitor pipeline
       env:
         S3_BUCKET: ${{ vars.S3_BUCKET }}
+        PROJECT_NAME: ${{ vars.PROJECT_NAME }}
         ENDPOINT_NAME: ${{ vars.ENDPOINT_NAME }}
+        AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
       run: |
         python src/monitoring/monitor_pipeline.py
