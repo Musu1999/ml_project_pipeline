@@ -1,6 +1,7 @@
 """
 model_deploy.py
-Deploys HR Analytics XGBoost model to SageMaker endpoint using pure boto3.
+Deploys using XGBoost native container - simpler permissions than sklearn container.
+Saves model as XGBoost native format inside tar.gz.
 """
 
 import os
@@ -9,6 +10,8 @@ import io
 import json
 import tarfile
 import boto3
+import joblib
+import xgboost as xgb
 from datetime import datetime
 from botocore.exceptions import ClientError, WaiterError
 
@@ -22,23 +25,9 @@ AWS_REGION         = os.environ["AWS_REGION"]
 DEPLOY_PREFIX  = f"{PROJECT}/deployment"
 SCRIPT_DIR     = os.path.dirname(os.path.abspath(__file__))
 SRC_DIR        = os.path.dirname(SCRIPT_DIR)
-INFERENCE_PATH = os.path.join(SRC_DIR, "inference", "inference.py")
 
-# Correct ECR account IDs per region for sagemaker-scikit-learn container
-ECR_ACCOUNTS = {
-    "us-east-1":      "683313688378",
-    "us-east-2":      "257758044811",
-    "us-west-1":      "746614075791",
-    "us-west-2":      "246618743249",
-    "ap-south-1":     "720646828776",
-    "ap-southeast-1": "121021644041",
-    "ap-southeast-2": "783357654285",
-    "ap-northeast-1": "354813040037",
-    "ap-northeast-2": "366743142698",
-    "eu-west-1":      "141502667606",
-    "eu-central-1":   "492215442770",
-    "eu-west-2":      "764974769150",
-}
+# XGBoost built-in container — account 492215442770 owns ap-south-1 XGBoost image
+XGB_IMAGE = f"492215442770.dkr.ecr.{AWS_REGION}.amazonaws.com/xgboost:1.7-1"
 
 
 # ── S3 helpers ────────────────────────────────────────────────────────────────
@@ -73,37 +62,33 @@ def upload_bytes(s3, bucket, key, data):
     print(f"  Uploaded   : s3://{bucket}/{key}")
 
 
-def read_inference_script():
-    if not os.path.exists(INFERENCE_PATH):
-        print(f"  ERROR: inference.py not found at {INFERENCE_PATH}")
-        sys.exit(1)
-    with open(INFERENCE_PATH, "rb") as f:
-        data = f.read()
-    print(f"  Read inference.py from: {INFERENCE_PATH}")
-    return data
-
-
-# ── Build model.tar.gz ────────────────────────────────────────────────────────
+# ── Convert pkl → XGBoost native format → model.tar.gz ───────────────────────
 
 def build_model_tar(s3):
-    print("\n  Building model.tar.gz ...")
-    model_key    = find_key(s3, S3_BUCKET, PROJECT, "xgboost_model.pkl")
-    metadata_key = find_key(s3, S3_BUCKET, PROJECT, "metadata.json")
+    print("\n  Building model.tar.gz (XGBoost native format)...")
 
-    model_bytes     = load_bytes_s3(s3, S3_BUCKET, model_key)
-    metadata_bytes  = load_bytes_s3(s3, S3_BUCKET, metadata_key)
-    inference_bytes = read_inference_script()
+    # Download pkl model from S3
+    model_key  = find_key(s3, S3_BUCKET, PROJECT, "xgboost_model.pkl")
+    model_bytes = load_bytes_s3(s3, S3_BUCKET, model_key)
 
+    # Load the sklearn XGBClassifier from pkl
+    model = joblib.load(io.BytesIO(model_bytes))
+    print(f"  Model type: {type(model)}")
+
+    # Save as XGBoost native binary (xgboost container expects 'xgboost-model')
+    xgb_buf = io.BytesIO()
+    booster = model.get_booster()
+    booster.save_model(xgb_buf)
+    xgb_buf.seek(0)
+    xgb_model_bytes = xgb_buf.read()
+    print(f"  XGBoost native model size: {len(xgb_model_bytes)} bytes")
+
+    # Bundle into model.tar.gz — file MUST be named 'xgboost-model'
     tar_buf = io.BytesIO()
     with tarfile.open(fileobj=tar_buf, mode="w:gz") as tar:
-        for name, data in [
-            ("xgboost_model.pkl", model_bytes),
-            ("inference.py",      inference_bytes),
-            ("metadata.json",     metadata_bytes),
-        ]:
-            info      = tarfile.TarInfo(name=name)
-            info.size = len(data)
-            tar.addfile(info, io.BytesIO(data))
+        info      = tarfile.TarInfo(name="xgboost-model")
+        info.size = len(xgb_model_bytes)
+        tar.addfile(info, io.BytesIO(xgb_model_bytes))
 
     tar_buf.seek(0)
     tar_key = f"{DEPLOY_PREFIX}/model.tar.gz"
@@ -112,98 +97,56 @@ def build_model_tar(s3):
     return f"s3://{S3_BUCKET}/{tar_key}"
 
 
-# ── Get image URI ─────────────────────────────────────────────────────────────
-
-def get_image_uri():
-    account = ECR_ACCOUNTS.get(AWS_REGION)
-    if not account:
-        print(f"  ERROR: No ECR account for region {AWS_REGION}")
-        sys.exit(1)
-    uri = (f"{account}.dkr.ecr.{AWS_REGION}.amazonaws.com/"
-           f"sagemaker-scikit-learn:1.2-1-cpu-py3")
-    print(f"  Image URI: {uri}")
-    return uri
-
-
-# ── Check endpoint failure reason ─────────────────────────────────────────────
-
-def print_failure_reason(sm):
-    try:
-        resp   = sm.describe_endpoint(EndpointName=ENDPOINT_NAME)
-        status = resp["EndpointStatus"]
-        reason = resp.get("FailureReason", "No reason provided")
-        print(f"\n  Endpoint status : {status}")
-        print(f"  Failure reason  : {reason}")
-    except Exception as e:
-        print(f"  Could not describe endpoint: {e}")
-
-
 # ── Deploy endpoint ───────────────────────────────────────────────────────────
 
 def deploy_endpoint(sm, model_name, config_name, model_tar_uri):
-    image_uri = get_image_uri()
+    print(f"\n  Image URI    : {XGB_IMAGE}")
+    print(f"  Model tar    : {model_tar_uri}")
 
-    # Check if model already exists and skip creation
-    try:
-        sm.describe_model(ModelName=model_name)
-        print(f"  Model already exists: {model_name}")
-    except ClientError:
-        print(f"\n  Creating SageMaker model : {model_name}")
-        sm.create_model(
-            ModelName        = model_name,
-            ExecutionRoleArn = SAGEMAKER_ROLE_ARN,
-            PrimaryContainer = {
-                "Image":        image_uri,
-                "ModelDataUrl": model_tar_uri,
-                "Environment": {
-                    "SAGEMAKER_PROGRAM":             "inference.py",
-                    "SAGEMAKER_SUBMIT_DIRECTORY":    model_tar_uri,
-                    "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
-                    "SAGEMAKER_REGION":              AWS_REGION,
-                },
-            },
-        )
+    # Create SageMaker Model
+    print(f"  Creating SM model    : {model_name}")
+    sm.create_model(
+        ModelName        = model_name,
+        ExecutionRoleArn = SAGEMAKER_ROLE_ARN,
+        PrimaryContainer = {
+            "Image":        XGB_IMAGE,
+            "ModelDataUrl": model_tar_uri,
+        },
+    )
 
-    # Check if endpoint config already exists
-    try:
-        sm.describe_endpoint_config(EndpointConfigName=config_name)
-        print(f"  Config already exists: {config_name}")
-    except ClientError:
-        print(f"  Creating endpoint config : {config_name}")
-        sm.create_endpoint_config(
-            EndpointConfigName = config_name,
-            ProductionVariants = [{
-                "VariantName":          "primary",
-                "ModelName":            model_name,
-                "InitialInstanceCount": 1,
-                "InstanceType":         "ml.t2.medium",
-                "InitialVariantWeight": 1.0,
-            }],
-        )
+    # Create Endpoint Config
+    print(f"  Creating endpoint config : {config_name}")
+    sm.create_endpoint_config(
+        EndpointConfigName = config_name,
+        ProductionVariants = [{
+            "VariantName":          "primary",
+            "ModelName":            model_name,
+            "InitialInstanceCount": 1,
+            "InstanceType":         "ml.t2.medium",
+            "InitialVariantWeight": 1.0,
+        }],
+    )
 
-    # Create or update endpoint
+    # Delete existing failed endpoint if present
     try:
-        current = sm.describe_endpoint(EndpointName=ENDPOINT_NAME)
-        status  = current["EndpointStatus"]
-        print(f"  Endpoint exists with status: {status}")
-        if status == "InService":
-            print(f"  Endpoint already InService — updating to new config.")
-            sm.update_endpoint(EndpointName=ENDPOINT_NAME, EndpointConfigName=config_name)
-        elif status in ("Creating", "Updating"):
-            print(f"  Endpoint is {status} — waiting for it to finish...")
-        elif status == "Failed":
-            reason = current.get("FailureReason", "unknown")
-            print(f"  Previous endpoint Failed: {reason}")
-            print(f"  Deleting and recreating...")
+        existing = sm.describe_endpoint(EndpointName=ENDPOINT_NAME)
+        status   = existing["EndpointStatus"]
+        print(f"  Existing endpoint status: {status}")
+        if status == "Failed":
+            print(f"  Deleting failed endpoint...")
             sm.delete_endpoint(EndpointName=ENDPOINT_NAME)
-            import time; time.sleep(10)
+            import time; time.sleep(15)
+            print(f"  Creating fresh endpoint  : {ENDPOINT_NAME}")
             sm.create_endpoint(EndpointName=ENDPOINT_NAME, EndpointConfigName=config_name)
+        else:
+            print(f"  Updating endpoint        : {ENDPOINT_NAME}")
+            sm.update_endpoint(EndpointName=ENDPOINT_NAME, EndpointConfigName=config_name)
     except ClientError:
         print(f"  Creating endpoint        : {ENDPOINT_NAME}")
         sm.create_endpoint(EndpointName=ENDPOINT_NAME, EndpointConfigName=config_name)
 
-    # Wait — 80 attempts × 30s = 40 minutes max
-    print(f"\n  Waiting for InService (up to 40 min) ...")
+    # Wait up to 40 minutes
+    print(f"\n  Waiting for InService (up to 40 min)...")
     try:
         sm.get_waiter("endpoint_in_service").wait(
             EndpointName = ENDPOINT_NAME,
@@ -211,10 +154,11 @@ def deploy_endpoint(sm, model_name, config_name, model_tar_uri):
         )
         print(f"  Endpoint InService: {ENDPOINT_NAME} ✅")
     except WaiterError:
-        print(f"\n  Waiter timed out. Checking endpoint status...")
-        print_failure_reason(sm)
-        print(f"\n  Check AWS Console → SageMaker → Endpoints → {ENDPOINT_NAME}")
-        print(f"  Also check: CloudWatch → Log groups → /aws/sagemaker/Endpoints/{ENDPOINT_NAME}")
+        resp   = sm.describe_endpoint(EndpointName=ENDPOINT_NAME)
+        status = resp["EndpointStatus"]
+        reason = resp.get("FailureReason", "No reason provided")
+        print(f"\n  Endpoint status : {status}")
+        print(f"  Failure reason  : {reason}")
         sys.exit(1)
 
 
@@ -225,7 +169,7 @@ def main():
     s3 = boto3.client("s3",        region_name=AWS_REGION)
     sm = boto3.client("sagemaker", region_name=AWS_REGION)
 
-    print("\n=== 5-Model-Deploy: HR Analytics ===")
+    print("\n=== 5-Model-Deploy: HR Analytics (XGBoost native container) ===")
     print(f"  Endpoint     : {ENDPOINT_NAME}")
     print(f"  Region       : {AWS_REGION}")
     print(f"  S3 Bucket    : {S3_BUCKET}")
@@ -244,10 +188,10 @@ def main():
         "timestamp":     ts,
         "region":        AWS_REGION,
         "instance_type": "ml.t2.medium",
+        "container":     "xgboost-native",
     }
     upload_bytes(s3, S3_BUCKET, f"{DEPLOY_PREFIX}/deployment_info.json",
                  json.dumps(info, indent=2).encode())
-
     print("\n  Deployment info saved.")
     print("=== Deployment complete ===\n")
 
