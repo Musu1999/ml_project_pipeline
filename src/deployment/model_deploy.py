@@ -1,7 +1,6 @@
 """
 model_deploy.py
 Deploys HR Analytics XGBoost model to SageMaker endpoint using pure boto3.
-Gets correct ECR image URI dynamically from AWS instead of hardcoding it.
 """
 
 import os
@@ -11,7 +10,7 @@ import json
 import tarfile
 import boto3
 from datetime import datetime
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, WaiterError
 
 # ── Config ────────────────────────────────────────────────────────────────────
 S3_BUCKET          = os.environ["S3_BUCKET"]
@@ -25,7 +24,7 @@ SCRIPT_DIR     = os.path.dirname(os.path.abspath(__file__))
 SRC_DIR        = os.path.dirname(SCRIPT_DIR)
 INFERENCE_PATH = os.path.join(SRC_DIR, "inference", "inference.py")
 
-# Correct region-to-account mapping for SageMaker sklearn container
+# Correct ECR account IDs per region for sagemaker-scikit-learn container
 ECR_ACCOUNTS = {
     "us-east-1":      "683313688378",
     "us-east-2":      "257758044811",
@@ -113,16 +112,30 @@ def build_model_tar(s3):
     return f"s3://{S3_BUCKET}/{tar_key}"
 
 
-# ── Get correct image URI ─────────────────────────────────────────────────────
+# ── Get image URI ─────────────────────────────────────────────────────────────
 
 def get_image_uri():
     account = ECR_ACCOUNTS.get(AWS_REGION)
     if not account:
-        print(f"  ERROR: No ECR account found for region {AWS_REGION}")
+        print(f"  ERROR: No ECR account for region {AWS_REGION}")
         sys.exit(1)
-    uri = f"{account}.dkr.ecr.{AWS_REGION}.amazonaws.com/sagemaker-scikit-learn:1.2-1-cpu-py3"
+    uri = (f"{account}.dkr.ecr.{AWS_REGION}.amazonaws.com/"
+           f"sagemaker-scikit-learn:1.2-1-cpu-py3")
     print(f"  Image URI: {uri}")
     return uri
+
+
+# ── Check endpoint failure reason ─────────────────────────────────────────────
+
+def print_failure_reason(sm):
+    try:
+        resp   = sm.describe_endpoint(EndpointName=ENDPOINT_NAME)
+        status = resp["EndpointStatus"]
+        reason = resp.get("FailureReason", "No reason provided")
+        print(f"\n  Endpoint status : {status}")
+        print(f"  Failure reason  : {reason}")
+    except Exception as e:
+        print(f"  Could not describe endpoint: {e}")
 
 
 # ── Deploy endpoint ───────────────────────────────────────────────────────────
@@ -130,48 +143,79 @@ def get_image_uri():
 def deploy_endpoint(sm, model_name, config_name, model_tar_uri):
     image_uri = get_image_uri()
 
-    print(f"\n  Creating SageMaker model : {model_name}")
-    sm.create_model(
-        ModelName        = model_name,
-        ExecutionRoleArn = SAGEMAKER_ROLE_ARN,
-        PrimaryContainer = {
-            "Image":        image_uri,
-            "ModelDataUrl": model_tar_uri,
-            "Environment": {
-                "SAGEMAKER_PROGRAM":             "inference.py",
-                "SAGEMAKER_SUBMIT_DIRECTORY":    model_tar_uri,
-                "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
-                "SAGEMAKER_REGION":              AWS_REGION,
-            },
-        },
-    )
-
-    print(f"  Creating endpoint config : {config_name}")
-    sm.create_endpoint_config(
-        EndpointConfigName = config_name,
-        ProductionVariants = [{
-            "VariantName":          "primary",
-            "ModelName":            model_name,
-            "InitialInstanceCount": 1,
-            "InstanceType":         "ml.t2.medium",
-            "InitialVariantWeight": 1.0,
-        }],
-    )
-
+    # Check if model already exists and skip creation
     try:
-        sm.describe_endpoint(EndpointName=ENDPOINT_NAME)
-        print(f"  Updating endpoint        : {ENDPOINT_NAME}")
-        sm.update_endpoint(EndpointName=ENDPOINT_NAME, EndpointConfigName=config_name)
+        sm.describe_model(ModelName=model_name)
+        print(f"  Model already exists: {model_name}")
+    except ClientError:
+        print(f"\n  Creating SageMaker model : {model_name}")
+        sm.create_model(
+            ModelName        = model_name,
+            ExecutionRoleArn = SAGEMAKER_ROLE_ARN,
+            PrimaryContainer = {
+                "Image":        image_uri,
+                "ModelDataUrl": model_tar_uri,
+                "Environment": {
+                    "SAGEMAKER_PROGRAM":             "inference.py",
+                    "SAGEMAKER_SUBMIT_DIRECTORY":    model_tar_uri,
+                    "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
+                    "SAGEMAKER_REGION":              AWS_REGION,
+                },
+            },
+        )
+
+    # Check if endpoint config already exists
+    try:
+        sm.describe_endpoint_config(EndpointConfigName=config_name)
+        print(f"  Config already exists: {config_name}")
+    except ClientError:
+        print(f"  Creating endpoint config : {config_name}")
+        sm.create_endpoint_config(
+            EndpointConfigName = config_name,
+            ProductionVariants = [{
+                "VariantName":          "primary",
+                "ModelName":            model_name,
+                "InitialInstanceCount": 1,
+                "InstanceType":         "ml.t2.medium",
+                "InitialVariantWeight": 1.0,
+            }],
+        )
+
+    # Create or update endpoint
+    try:
+        current = sm.describe_endpoint(EndpointName=ENDPOINT_NAME)
+        status  = current["EndpointStatus"]
+        print(f"  Endpoint exists with status: {status}")
+        if status == "InService":
+            print(f"  Endpoint already InService — updating to new config.")
+            sm.update_endpoint(EndpointName=ENDPOINT_NAME, EndpointConfigName=config_name)
+        elif status in ("Creating", "Updating"):
+            print(f"  Endpoint is {status} — waiting for it to finish...")
+        elif status == "Failed":
+            reason = current.get("FailureReason", "unknown")
+            print(f"  Previous endpoint Failed: {reason}")
+            print(f"  Deleting and recreating...")
+            sm.delete_endpoint(EndpointName=ENDPOINT_NAME)
+            import time; time.sleep(10)
+            sm.create_endpoint(EndpointName=ENDPOINT_NAME, EndpointConfigName=config_name)
     except ClientError:
         print(f"  Creating endpoint        : {ENDPOINT_NAME}")
         sm.create_endpoint(EndpointName=ENDPOINT_NAME, EndpointConfigName=config_name)
 
-    print(f"\n  Waiting for InService (5-10 min) ...")
-    sm.get_waiter("endpoint_in_service").wait(
-        EndpointName = ENDPOINT_NAME,
-        WaiterConfig = {"Delay": 30, "MaxAttempts": 40},
-    )
-    print(f"  Endpoint InService: {ENDPOINT_NAME}")
+    # Wait — 80 attempts × 30s = 40 minutes max
+    print(f"\n  Waiting for InService (up to 40 min) ...")
+    try:
+        sm.get_waiter("endpoint_in_service").wait(
+            EndpointName = ENDPOINT_NAME,
+            WaiterConfig = {"Delay": 30, "MaxAttempts": 80},
+        )
+        print(f"  Endpoint InService: {ENDPOINT_NAME} ✅")
+    except WaiterError:
+        print(f"\n  Waiter timed out. Checking endpoint status...")
+        print_failure_reason(sm)
+        print(f"\n  Check AWS Console → SageMaker → Endpoints → {ENDPOINT_NAME}")
+        print(f"  Also check: CloudWatch → Log groups → /aws/sagemaker/Endpoints/{ENDPOINT_NAME}")
+        sys.exit(1)
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
