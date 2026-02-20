@@ -6,34 +6,83 @@ on:
     workflows: ["4-Model-Evaluate"]
     types: [completed]
 
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  S3_BUCKET: ${{ vars.S3_BUCKET }}
+  PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+  ENDPOINT_NAME: ${{ vars.ENDPOINT_NAME }}
+  SAGEMAKER_ROLE_ARN: ${{ secrets.SAGEMAKER_ROLE_ARN }}
+
 jobs:
   deploy-model:
+    name: Deploy Model to SageMaker Endpoint
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
     permissions:
       id-token: write
       contents: read
 
+    outputs:
+      endpoint-name: ${{ steps.deploy.outputs.endpoint_name }}
+
     steps:
-    - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
 
-    - name: Install dependencies
-      run: pip install boto3 joblib xgboost scikit-learn numpy
+      - name: Install dependencies
+        run: |
+          pip install boto3 joblib xgboost scikit-learn numpy
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-        aws-region: ${{ vars.AWS_REGION }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
-    - name: Run batch predictions and save to S3
-      env:
-        S3_BUCKET: ${{ vars.S3_BUCKET }}
-        PROJECT_NAME: ${{ vars.PROJECT_NAME }}
-        AWS_REGION: ${{ vars.AWS_REGION }}
-        AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
-      run: python src/deployment/model_deploy.py
+      - name: Upload inference code to S3
+        run: |
+          aws s3 cp src/inference/inference.py s3://${{ env.S3_BUCKET }}/${{ env.PROJECT_NAME }}/code/inference.py
+
+      - name: Deploy model to SageMaker
+        id: deploy
+        run: |
+          python src/deployment/model_deploy.py \
+            --bucket ${{ env.S3_BUCKET }} \
+            --prefix ${{ env.PROJECT_NAME }} \
+            --role-arn ${{ env.SAGEMAKER_ROLE_ARN }} \
+            --region ${{ env.AWS_REGION }} \
+            --endpoint-name ${{ env.ENDPOINT_NAME }} \
+            --output-file deployment_info.json
+
+          ENDPOINT_NAME=$(cat deployment_info.json | python -c "import sys, json; print(json.load(sys.stdin)['endpoint_name'])")
+          echo "endpoint_name=$ENDPOINT_NAME" >> $GITHUB_OUTPUT
+
+      - name: Test endpoint with predict.py
+        run: |
+          TEST_FEATURES='[0, 1, 28, 3200, 1, 1, 2, 2]'
+          python src/inference/predict.py \
+            --endpoint-name ${{ steps.deploy.outputs.endpoint_name }} \
+            --region ${{ env.AWS_REGION }} \
+            --features "$TEST_FEATURES"
+
+      - name: Create summary
+        run: |
+          echo "## Model Deployment Complete ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Endpoint Details:**" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat deployment_info.json >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Endpoint Name:** \`${{ steps.deploy.outputs.endpoint_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Monitor endpoint in AWS Console → SageMaker → Endpoints" >> $GITHUB_STEP_SUMMARY
+          echo "2. Run Workflow 6 to monitor pipeline health" >> $GITHUB_STEP_SUMMARY
+          echo "3. Check CloudWatch logs if any issues arise" >> $GITHUB_STEP_SUMMARY
