@@ -1,12 +1,9 @@
 name: 5-Model-Deploy
-
 on:
   workflow_dispatch:
   workflow_run:
     workflows: ["4-Model-Evaluate"]
-    types:
-      - completed
-
+    types: [completed]
 jobs:
   deploy-model:
     runs-on: ubuntu-latest
@@ -14,27 +11,19 @@ jobs:
     permissions:
       id-token: write
       contents: read
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
       with:
         python-version: '3.9'
-
     - name: Install dependencies
-      run: |
-        pip install boto3 joblib xgboost scikit-learn
-
+      run: pip install boto3 joblib xgboost scikit-learn numpy
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v2
       with:
         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
         aws-region: ${{ vars.AWS_REGION }}
-
-    - name: Deploy to SageMaker
+    - name: Deploy to Lambda
       env:
         S3_BUCKET: ${{ vars.S3_BUCKET }}
         PROJECT_NAME: ${{ vars.PROJECT_NAME }}
@@ -42,5 +31,4 @@ jobs:
         SAGEMAKER_ROLE_ARN: ${{ secrets.SAGEMAKER_ROLE_ARN }}
         AWS_REGION: ${{ vars.AWS_REGION }}
         AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
-      run: |
-        python src/deployment/model_deploy.py
+      run: python src/deployment/model_deploy.py
