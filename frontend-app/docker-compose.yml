@@ -1,0 +1,34 @@
+version: "3.9"
+
+services:
+  attrition-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hr-attrition-dashboard:latest
+    container_name: hr-attrition-app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - ENDPOINT_NAME=${ENDPOINT_NAME}
+    # Private: only accessible within the host / organisation network
+    # No public port binding — access via Codespace forwarded port only
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+networks:
+  internal:
+    driver: bridge
+    internal: false   # set true to make fully air-gapped (no internet from container)

@@ -1,0 +1,10 @@
+# ─────────────────────────────────────────────────────────────
+# HR Attrition Dashboard — Environment Variables
+# Fill in your AWS credentials and SageMaker endpoint name
+# NEVER commit this file to git (already in .gitignore)
+# ─────────────────────────────────────────────────────────────
+
+AWS_ACCESS_KEY_ID=AKIATU7EYFTUUQDKEYNF
+AWS_SECRET_ACCESS_KEY=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
+AWS_REGION=ap-south-1
+ENDPOINT_NAME=mousumi-hr-attrition-endpoint
