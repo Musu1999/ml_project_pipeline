@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>AttritionIQ — Batch Predict</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/static/css/style.css"/>
+</head>
+<body>
+
+<div id="loader">
+  <div class="lb"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+  <div class="loader-txt">LOADING BATCH MODULE...</div>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="logo">
+      <div class="logo-mark">HR<br>AI</div>
+      <div>
+        <div class="logo-name">AttritionIQ</div>
+        <div class="logo-sub">MOUSUMI · BATCH PREDICTION · SAGEMAKER</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <a href="/" class="nav-link">PREDICT</a>
+      <a href="/batch" class="nav-link active">BATCH</a>
+      <div class="status-badge">
+        <div class="dot wait" id="stDot"></div>
+        <span id="stLabel" style="color:var(--gold)">CHECKING...</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-glow"></div>
+    <div class="eyebrow">BULK WORKFORCE ANALYSIS</div>
+    <h1>Batch<br><span class="c">Attrition</span><br><span class="r">Analysis</span></h1>
+    <p class="hero-sub">
+      Predict attrition risk for up to 50 employees at once.<br>
+      Endpoint: <span class="ep-name">{{ endpoint_name or "endpoint not set" }}</span>
+    </p>
+  </section>
+
+  <div class="batch-wrap">
+    <div class="sec-title">EMPLOYEE JSON INPUT</div>
+    <p style="font-family:var(--mono);font-size:11px;color:var(--dim);margin-bottom:1rem;line-height:1.8">
+      Feature order: <span style="color:var(--cyan)">HighTenure_Satisfied, OverTime_Yes, Age, MonthlyIncome, MaritalStatus_Single, Gender_Male, YearsAtCompany, JobSatisfaction</span>
+    </p>
+    <textarea class="batch-input" id="batchInput" placeholder='{"employees":[{"name":"Alice","features":[0,1,28,3200,1,1,2,2]}]}'></textarea>
+    <div style="display:flex;gap:1rem;margin-top:1rem">
+      <button class="batch-btn" onclick="loadExample()"><span>📋 LOAD EXAMPLE</span></button>
+      <button class="batch-btn" id="batchBtn" onclick="runBatch()"><span id="batchBtnTxt">▶ RUN BATCH</span></button>
+    </div>
+
+    <div id="batchResults" style="display:none;margin-top:2.5rem">
+      <div class="sec-title">BATCH RESULTS</div>
+      <div class="batch-summary">
+        <div class="batch-stat">
+          <div class="batch-stat-label">TOTAL</div>
+          <div class="batch-stat-val" id="bTotal" style="color:var(--txt)">0</div>
+        </div>
+        <div class="batch-stat">
+          <div class="batch-stat-label">HIGH RISK</div>
+          <div class="batch-stat-val" id="bHigh">0</div>
+        </div>
+        <div class="batch-stat">
+          <div class="batch-stat-label">MEDIUM RISK</div>
+          <div class="batch-stat-val" id="bMed">0</div>
+        </div>
+        <div class="batch-stat">
+          <div class="batch-stat-label">LOW RISK</div>
+          <div class="batch-stat-val" id="bLow">0</div>
+        </div>
+      </div>
+      <table class="batch-table">
+        <thead>
+          <tr>
+            <th>NAME</th>
+            <th>PREDICTION</th>
+            <th>ATTRITION %</th>
+            <th>RETENTION %</th>
+            <th>RISK LEVEL</th>
+          </tr>
+        </thead>
+        <tbody id="batchTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="log-section">
+    <div class="sec-title">SYSTEM LOG</div>
+    <div class="terminal" id="batchTerm">
+      <div class="log-line inf">[SYSTEM] AttritionIQ Batch Module v2.0</div>
+      <div class="log-line">[INFO] Endpoint: {{ endpoint_name or "NOT SET" }} · Region: {{ region }}</div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-txt">© 2026 MOUSUMI · ML PIPELINE · GITHUB ACTIONS + SAGEMAKER + DOCKER</div>
+    <div class="footer-tags">
+      <div class="tag">BATCH</div><div class="tag">XGBOOST</div>
+      <div class="tag">SAGEMAKER</div><div class="tag">DOCKER</div>
+    </div>
+  </footer>
+</div>
+
+<script src="/static/js/batch.js"></script>
+</body>
+</html>

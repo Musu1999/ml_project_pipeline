@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>AttritionIQ — Single Predict</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/static/css/style.css"/>
+</head>
+<body>
+
+<div id="loader">
+  <div class="lb"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+  <div class="loader-txt">INITIALISING ATTRITIONIQ...</div>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="logo">
+      <div class="logo-mark">HR<br>AI</div>
+      <div>
+        <div class="logo-name">AttritionIQ</div>
+        <div class="logo-sub">MOUSUMI · HR ANALYTICS · SAGEMAKER</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <a href="/" class="nav-link active">PREDICT</a>
+      <a href="/batch" class="nav-link">BATCH</a>
+      <div class="status-badge">
+        <div class="dot wait" id="stDot"></div>
+        <span id="stLabel" style="color:var(--gold)">CHECKING...</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-glow"></div>
+    <div class="eyebrow">PREDICTIVE WORKFORCE INTELLIGENCE</div>
+    <h1>Employee<br><span class="c">Attrition</span><br><span class="r">Detection</span></h1>
+    <p class="hero-sub">
+      XGBoost classifier · 1,470 records · 8 features<br>
+      Live inference via AWS SageMaker ·
+      <span class="ep-name">{{ endpoint_name or "endpoint not set" }}</span>
+    </p>
+  </section>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">MODEL ACCURACY</div>
+      <div class="stat-value blue">87.1%</div>
+      <div class="stat-sub">TUNED XGBOOST</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">TRAINING SAMPLES</div>
+      <div class="stat-value" style="color:var(--txt)">1,470</div>
+      <div class="stat-sub">HR ANALYTICS DATASET</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">ATTRITION RATE</div>
+      <div class="stat-value red">16.1%</div>
+      <div class="stat-sub">237 / 1,470 EMPLOYEES</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">ROC AUC SCORE</div>
+      <div class="stat-value green">0.823</div>
+      <div class="stat-sub">DISCRIMINATIVE POWER</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="form-panel">
+      <div class="sec-title">PREDICT ATTRITION RISK</div>
+      <div class="form-grid">
+        <div class="field"><label>Age</label><input type="number" id="fAge" value="32" min="18" max="65"/></div>
+        <div class="field"><label>Monthly Income (INR)</label><input type="number" id="fInc" value="5000" min="1000" max="100000"/></div>
+        <div class="field"><label>Years at Company</label><input type="number" id="fYrs" value="5" min="0" max="40"/></div>
+        <div class="field">
+          <label>Job Satisfaction (1-4)</label>
+          <select id="fSat">
+            <option value="1">1 — Very Low</option>
+            <option value="2">2 — Low</option>
+            <option value="3" selected>3 — Medium</option>
+            <option value="4">4 — High</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Works Overtime</label>
+          <select id="fOt"><option value="0">No</option><option value="1">Yes</option></select>
+        </div>
+        <div class="field">
+          <label>Marital Status</label>
+          <select id="fMs"><option value="0">Married / Divorced</option><option value="1">Single</option></select>
+        </div>
+        <div class="field">
+          <label>Gender</label>
+          <select id="fGm"><option value="1">Male</option><option value="0">Female</option></select>
+        </div>
+        <div class="field">
+          <label>High Tenure + Satisfied</label>
+          <select id="fHt"><option value="0">No</option><option value="1">Yes (>=5yr & Sat>=3)</option></select>
+        </div>
+      </div>
+      <button class="predict-btn" id="pBtn" onclick="runPredict()">
+        <span id="bTxt">▶ RUN PREDICTION</span>
+      </button>
+
+      <div class="result-box" id="resBox">
+        <div class="result-label">PREDICTION RESULT</div>
+        <div class="result-verdict" id="rV">—</div>
+        <div class="result-prob" id="rP">—</div>
+        <div class="bar-wrap"><div class="bar-fill" id="rBar" style="width:0%"></div></div>
+        <div class="result-grid">
+          <div class="result-item"><div class="result-item-label">Attrition Prob.</div><div class="result-item-value" id="rA">—</div></div>
+          <div class="result-item"><div class="result-item-label">Retention Prob.</div><div class="result-item-value" id="rR">—</div></div>
+          <div class="result-item"><div class="result-item-label">Risk Level</div><div class="result-item-value" id="rRisk">—</div></div>
+          <div class="result-item"><div class="result-item-label">Inference Mode</div><div class="result-item-value" id="rMode">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profiles-panel">
+      <div class="sec-title">SAMPLE PROFILES</div>
+      <div class="profile-list" id="plist"></div>
+    </div>
+  </div>
+
+  <div class="charts">
+    <div class="sec-title">MODEL INSIGHTS</div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">FEATURE IMPORTANCE</div>
+        <div class="feat-list" id="featList"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">DATASET DISTRIBUTION</div>
+        <div class="donut-wrap">
+          <svg width="100" height="100" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="38" fill="none" stroke="#1a2535" stroke-width="10"/>
+            <circle cx="50" cy="50" r="38" fill="none" stroke="#ff3d6b" stroke-width="10" stroke-dasharray="0 238.76" id="dAttr" style="transition:stroke-dasharray 1.2s ease"/>
+            <circle cx="50" cy="50" r="38" fill="none" stroke="#a8ff3e" stroke-width="10" stroke-dasharray="238.76 238.76" id="dRet" style="transition:all 1.2s ease"/>
+          </svg>
+          <div class="donut-center"><div class="donut-pct" style="color:var(--red)">16%</div><div class="donut-sub">ATTRITION</div></div>
+        </div>
+        <div class="donut-legend">
+          <div class="donut-legend-item"><div class="legend-dot" style="background:var(--red)"></div>Attrition — 237 (16.1%)</div>
+          <div class="donut-legend-item"><div class="legend-dot" style="background:var(--green)"></div>Retained — 1,233 (83.9%)</div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">RISK BY JOB SATISFACTION</div>
+        <div class="bar-chart" id="barChart"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="log-section">
+    <div class="sec-title">SYSTEM LOG</div>
+    <div class="terminal" id="term">
+      <div class="log-line inf">[SYSTEM] AttritionIQ v2.0 — Mousumi HR Analytics</div>
+      <div class="log-line">[INFO] Endpoint: {{ endpoint_name or "NOT SET" }} · Region: {{ region }}</div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-txt">© 2026 MOUSUMI · ML PIPELINE · GITHUB ACTIONS + SAGEMAKER + DOCKER</div>
+    <div class="footer-tags">
+      <div class="tag">XGBOOST</div><div class="tag">SAGEMAKER</div>
+      <div class="tag">DOCKER</div><div class="tag">AWS</div>
+    </div>
+  </footer>
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
