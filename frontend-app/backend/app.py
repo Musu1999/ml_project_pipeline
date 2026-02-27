@@ -1,6 +1,5 @@
 """
 backend/app.py — Flask entry point.
-Registers API blueprint and serves frontend templates.
 """
 import os
 import logging
@@ -9,9 +8,14 @@ from api import api
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
+# Resolve paths relative to THIS file so they work inside Docker
+BASE_DIR      = os.path.dirname(os.path.abspath(__file__))
+TEMPLATE_DIR  = os.path.join(BASE_DIR, '..', 'frontend', 'templates')
+STATIC_DIR    = os.path.join(BASE_DIR, '..', 'frontend', 'static')
+
 app = Flask(__name__,
-            template_folder='../frontend/templates',
-            static_folder='../frontend/static')
+            template_folder=TEMPLATE_DIR,
+            static_folder=STATIC_DIR)
 
 app.register_blueprint(api)
 
@@ -31,6 +35,8 @@ def batch():
                            region=AWS_REGION)
 
 if __name__ == "__main__":
-    print(f"\n  Endpoint : {ENDPOINT_NAME or 'NOT SET'}")
+    print(f"\n  Template : {TEMPLATE_DIR}")
+    print(f"  Static   : {STATIC_DIR}")
+    print(f"  Endpoint : {ENDPOINT_NAME or 'NOT SET'}")
     print(f"  Region   : {AWS_REGION}\n")
     app.run(host="0.0.0.0", port=5000, debug=False)
