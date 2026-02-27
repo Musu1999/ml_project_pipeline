@@ -6,15 +6,122 @@
 <title>AttritionIQ — Batch Predict</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="/static/css/style.css"/>
+<style>
+/* ── Batch page specific styles ── */
+.batch-outer { padding: 2.5rem 3rem; }
+.batch-feature-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: .6rem; margin-bottom: 2rem;
+}
+.feat-box {
+  background: #0c1118; border: 1px solid #1e2d3d; padding: .75rem;
+}
+.feat-box-idx  { font-family:'Space Mono',monospace; font-size:8px; color:#00e5ff; margin-bottom:.2rem; }
+.feat-box-name { font-family:'Space Mono',monospace; font-size:10px; color:#c8d8e8; font-weight:700; margin-bottom:.2rem; }
+.feat-box-vals { font-family:'Space Mono',monospace; font-size:8px; color:#4a6a85; }
+
+.batch-label {
+  font-family:'Space Mono',monospace; font-size:10px; color:#4a6a85;
+  letter-spacing:.18em; text-transform:uppercase;
+  margin-bottom:.75rem; display:flex; align-items:center; gap:.5rem;
+}
+.batch-label::before { content:''; display:block; width:14px; height:1px; background:#4a6a85; }
+
+.batch-hint {
+  font-family:'Space Mono',monospace; font-size:11px; color:#4a6a85;
+  background:#0c1118; border:1px solid #1e2d3d;
+  padding:.9rem 1.1rem; margin-bottom:1rem; line-height:1.9;
+}
+.batch-hint b { color:#00e5ff; }
+
+textarea#bInput {
+  width:100%; min-height:240px;
+  background:#121a22 !important;
+  border:1px solid #1e2d3d !important;
+  color:#c8d8e8 !important;
+  font-family:'Space Mono',monospace !important;
+  font-size:12px !important;
+  padding:1rem !important; outline:none !important;
+  resize:vertical; line-height:1.9; display:block;
+  transition: border-color .2s;
+}
+textarea#bInput:focus { border-color:#00e5ff !important; }
+textarea#bInput::placeholder { color:#2d4a5c; }
+
+.btn-row { display:flex; gap:.8rem; margin-top:1.1rem; flex-wrap:wrap; }
+.xbtn {
+  padding:.85rem 1.6rem; background:transparent;
+  font-family:'Space Mono',monospace; font-size:11px;
+  letter-spacing:.1em; text-transform:uppercase;
+  cursor:pointer; position:relative; overflow:hidden;
+  transition:color .25s; border:1px solid #00e5ff; color:#00e5ff;
+}
+.xbtn::before {
+  content:''; position:absolute; inset:0; background:#00e5ff;
+  transform:translateX(-101%); transition:transform .28s cubic-bezier(.4,0,.2,1);
+}
+.xbtn:hover { color:#060a0e; } .xbtn:hover::before { transform:translateX(0); }
+.xbtn span { position:relative; z-index:1; }
+.xbtn:disabled { opacity:.4; cursor:not-allowed; }
+.xbtn.dim  { border-color:#4a6a85; color:#4a6a85; }
+.xbtn.dim::before { background:#4a6a85; }
+
+/* Results */
+.res-wrap { margin-top:2.5rem; }
+.sum-grid {
+  display:grid; grid-template-columns:repeat(4,1fr);
+  gap:.9rem; margin-bottom:1.75rem;
+}
+.sum-card {
+  background:#0c1118; border:1px solid #1e2d3d;
+  padding:1.2rem 1rem; text-align:center;
+}
+.sum-card-lbl {
+  font-family:'Space Mono',monospace; font-size:9px; color:#4a6a85;
+  letter-spacing:.12em; text-transform:uppercase; margin-bottom:.5rem;
+}
+.sum-card-val { font-size:2rem; font-weight:800; letter-spacing:-.04em; font-family:'Syne',sans-serif; }
+
+.rtable { width:100%; border-collapse:collapse; }
+.rtable th {
+  font-family:'Space Mono',monospace; font-size:9px; color:#4a6a85;
+  letter-spacing:.12em; text-transform:uppercase;
+  text-align:left; padding:.7rem 1rem; border-bottom:1px solid #1e2d3d;
+}
+.rtable td {
+  font-family:'Space Mono',monospace; font-size:11px;
+  padding:.7rem 1rem; border-bottom:1px solid rgba(30,45,61,.5); color:#c8d8e8;
+}
+.rtable tr:hover td { background:rgba(0,229,255,.02); }
+.rvh{color:#ff3d6b;font-weight:700} .rhi{color:#ff8c42;font-weight:700}
+.rme{color:#ffd166;font-weight:700} .rlo{color:#a8ff3e;font-weight:700}
+.ayes{color:#ff3d6b}  .ano{color:#a8ff3e}
+
+@media(max-width:900px){
+  .batch-outer{padding:2rem 1.5rem}
+  .batch-feature-grid{grid-template-columns:1fr 1fr}
+  .sum-grid{grid-template-columns:1fr 1fr}
+}
+</style>
 </head>
 <body>
 
+<!-- LOADER — auto hides after 1s via CSS, no JS dependency -->
+<style>
+#loader{animation:loaderHide 0s 1.2s forwards!important;}
+@keyframes loaderHide{to{opacity:0;visibility:hidden;display:none;pointer-events:none;}}
+</style>
 <div id="loader">
-  <div class="lb"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+  <div class="lb">
+    <span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span>
+  </div>
   <div class="loader-txt">LOADING BATCH MODULE...</div>
 </div>
 
 <div class="wrap">
+
+  <!-- HEADER -->
   <header>
     <div class="logo">
       <div class="logo-mark">HR<br>AI</div>
@@ -24,7 +131,7 @@
       </div>
     </div>
     <div class="header-right">
-      <a href="/" class="nav-link">PREDICT</a>
+      <a href="/" class="nav-link">SINGLE PREDICT</a>
       <a href="/batch" class="nav-link active">BATCH</a>
       <div class="status-badge">
         <div class="dot wait" id="stDot"></div>
@@ -33,67 +140,150 @@
     </div>
   </header>
 
+  <!-- HERO -->
   <section class="hero">
     <div class="hero-glow"></div>
     <div class="eyebrow">BULK WORKFORCE ANALYSIS</div>
-    <h1>Batch<br><span class="c">Attrition</span><br><span class="r">Analysis</span></h1>
+    <h1>Batch<br><span class="c">Attrition</span><br><span class="r">Scoring</span></h1>
     <p class="hero-sub">
-      Predict attrition risk for up to 50 employees at once.<br>
-      Endpoint: <span class="ep-name">{{ endpoint_name or "endpoint not set" }}</span>
+      Score up to <strong style="color:var(--cyan)">50 employees</strong> at once — paste JSON, click Run.<br>
+      Endpoint: <span class="ep-name">{{ endpoint_name or "not set" }}</span>
     </p>
   </section>
 
-  <div class="batch-wrap">
-    <div class="sec-title">EMPLOYEE JSON INPUT</div>
-    <p style="font-family:var(--mono);font-size:11px;color:var(--dim);margin-bottom:1rem;line-height:1.8">
-      Feature order: <span style="color:var(--cyan)">HighTenure_Satisfied, OverTime_Yes, Age, MonthlyIncome, MaritalStatus_Single, Gender_Male, YearsAtCompany, JobSatisfaction</span>
-    </p>
-    <textarea class="batch-input" id="batchInput" placeholder='{"employees":[{"name":"Alice","features":[0,1,28,3200,1,1,2,2]}]}'></textarea>
-    <div style="display:flex;gap:1rem;margin-top:1rem">
-      <button class="batch-btn" onclick="loadExample()"><span>📋 LOAD EXAMPLE</span></button>
-      <button class="batch-btn" id="batchBtn" onclick="runBatch()"><span id="batchBtnTxt">▶ RUN BATCH</span></button>
+  <!-- STATS BAR -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">MAX BATCH SIZE</div>
+      <div class="stat-value blue">50</div>
+      <div class="stat-sub">EMPLOYEES PER RUN</div>
     </div>
-
-    <div id="batchResults" style="display:none;margin-top:2.5rem">
-      <div class="sec-title">BATCH RESULTS</div>
-      <div class="batch-summary">
-        <div class="batch-stat">
-          <div class="batch-stat-label">TOTAL</div>
-          <div class="batch-stat-val" id="bTotal" style="color:var(--txt)">0</div>
-        </div>
-        <div class="batch-stat">
-          <div class="batch-stat-label">HIGH RISK</div>
-          <div class="batch-stat-val" id="bHigh">0</div>
-        </div>
-        <div class="batch-stat">
-          <div class="batch-stat-label">MEDIUM RISK</div>
-          <div class="batch-stat-val" id="bMed">0</div>
-        </div>
-        <div class="batch-stat">
-          <div class="batch-stat-label">LOW RISK</div>
-          <div class="batch-stat-val" id="bLow">0</div>
-        </div>
-      </div>
-      <table class="batch-table">
-        <thead>
-          <tr>
-            <th>NAME</th>
-            <th>PREDICTION</th>
-            <th>ATTRITION %</th>
-            <th>RETENTION %</th>
-            <th>RISK LEVEL</th>
-          </tr>
-        </thead>
-        <tbody id="batchTbody"></tbody>
-      </table>
+    <div class="stat">
+      <div class="stat-label">FEATURES PER EMPLOYEE</div>
+      <div class="stat-value" style="color:var(--txt)">8</div>
+      <div class="stat-sub">ORDERED ARRAY</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">RISK LEVELS</div>
+      <div class="stat-value green">4</div>
+      <div class="stat-sub">VH / HIGH / MED / LOW</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">FALLBACK MODE</div>
+      <div class="stat-value" style="color:var(--gold)">AUTO</div>
+      <div class="stat-sub">APPROX IF TOKEN EXPIRED</div>
     </div>
   </div>
 
+  <!-- MAIN INPUT AREA -->
+  <div class="batch-outer">
+
+    <!-- Feature reference -->
+    <div class="batch-label">FEATURE REFERENCE — INDEX ORDER FOR JSON ARRAY</div>
+    <div class="batch-feature-grid">
+      <div class="feat-box">
+        <div class="feat-box-idx">INDEX 0</div>
+        <div class="feat-box-name">HighTenure_Satisfied</div>
+        <div class="feat-box-vals">0 = No<br>1 = Yes (≥5yr &amp; Sat≥3)</div>
+      </div>
+      <div class="feat-box">
+        <div class="feat-box-idx">INDEX 1</div>
+        <div class="feat-box-name">OverTime_Yes</div>
+        <div class="feat-box-vals">0 = No<br>1 = Yes</div>
+      </div>
+      <div class="feat-box">
+        <div class="feat-box-idx">INDEX 2</div>
+        <div class="feat-box-name">Age</div>
+        <div class="feat-box-vals">18 – 65</div>
+      </div>
+      <div class="feat-box">
+        <div class="feat-box-idx">INDEX 3</div>
+        <div class="feat-box-name">MonthlyIncome</div>
+        <div class="feat-box-vals">1000 – 100000 (INR)</div>
+      </div>
+      <div class="feat-box">
+        <div class="feat-box-idx">INDEX 4</div>
+        <div class="feat-box-name">MaritalStatus_Single</div>
+        <div class="feat-box-vals">0 = Married/Divorced<br>1 = Single</div>
+      </div>
+      <div class="feat-box">
+        <div class="feat-box-idx">INDEX 5</div>
+        <div class="feat-box-name">Gender_Male</div>
+        <div class="feat-box-vals">0 = Female<br>1 = Male</div>
+      </div>
+      <div class="feat-box">
+        <div class="feat-box-idx">INDEX 6</div>
+        <div class="feat-box-name">YearsAtCompany</div>
+        <div class="feat-box-vals">0 – 40</div>
+      </div>
+      <div class="feat-box">
+        <div class="feat-box-idx">INDEX 7</div>
+        <div class="feat-box-name">JobSatisfaction</div>
+        <div class="feat-box-vals">1=VeryLow  2=Low<br>3=Medium  4=High</div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="batch-label">EMPLOYEE JSON INPUT</div>
+    <div class="batch-hint">
+      Format: <b>{"employees":[{"name":"Alice","features":[0,1,28,3200,1,1,2,2]}, ...]}</b><br>
+      Each features array must have exactly <b>8 values</b> in the index order above.
+      Click <b>LOAD EXAMPLE</b> to see ready-to-run sample data.
+    </div>
+
+    <textarea
+      id="bInput"
+      placeholder='Click "LOAD EXAMPLE" below, or paste your own JSON here...'
+    ></textarea>
+
+    <div class="btn-row">
+      <button class="xbtn dim" onclick="loadExample()"><span>📋 LOAD EXAMPLE</span></button>
+      <button class="xbtn" id="runBtn" onclick="runBatch()"><span id="runTxt">▶ RUN BATCH</span></button>
+      <button class="xbtn dim" onclick="clearAll()"><span>✕ CLEAR</span></button>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="res-wrap" id="resWrap" style="display:none">
+      <div class="batch-label" style="margin-top:2rem">RESULTS</div>
+      <div class="sum-grid">
+        <div class="sum-card">
+          <div class="sum-card-lbl">TOTAL</div>
+          <div class="sum-card-val" id="rTotal" style="color:var(--txt)">0</div>
+        </div>
+        <div class="sum-card">
+          <div class="sum-card-lbl">HIGH RISK</div>
+          <div class="sum-card-val" id="rHigh" style="color:var(--red)">0</div>
+        </div>
+        <div class="sum-card">
+          <div class="sum-card-lbl">MEDIUM RISK</div>
+          <div class="sum-card-val" id="rMed" style="color:var(--gold)">0</div>
+        </div>
+        <div class="sum-card">
+          <div class="sum-card-lbl">LOW RISK</div>
+          <div class="sum-card-val" id="rLow" style="color:var(--green)">0</div>
+        </div>
+      </div>
+      <table class="rtable">
+        <thead>
+          <tr>
+            <th>#</th><th>NAME</th><th>VERDICT</th>
+            <th>ATTRITION %</th><th>RETENTION %</th>
+            <th>RISK</th><th>MODE</th>
+          </tr>
+        </thead>
+        <tbody id="rBody"></tbody>
+      </table>
+    </div>
+
+  </div><!-- /batch-outer -->
+
+  <!-- LOG -->
   <div class="log-section">
     <div class="sec-title">SYSTEM LOG</div>
-    <div class="terminal" id="batchTerm">
+    <div class="terminal" id="logTerm">
       <div class="log-line inf">[SYSTEM] AttritionIQ Batch Module v2.0</div>
       <div class="log-line">[INFO] Endpoint: {{ endpoint_name or "NOT SET" }} · Region: {{ region }}</div>
+      <div class="log-line">[READY] Click LOAD EXAMPLE → RUN BATCH to start</div>
     </div>
   </div>
 
@@ -106,6 +296,206 @@
   </footer>
 </div>
 
-<script src="/static/js/batch.js"></script>
+<!-- ALL JS INLINED — no external batch.js dependency -->
+<script>
+const EXAMPLE = {"employees":[
+  {"name":"Alice — Very High Risk",  "features":[0,1,24,2800,1,1,1,1]},
+  {"name":"Bob — High Risk",         "features":[0,1,29,3800,1,1,3,2]},
+  {"name":"Carol — Medium Risk",     "features":[0,1,32,4500,0,0,4,2]},
+  {"name":"David — Low Risk",        "features":[0,0,35,5500,0,0,7,3]},
+  {"name":"Emma — Very Low Risk",    "features":[1,0,48,12000,0,0,18,4]},
+  {"name":"Frank — High Risk",       "features":[0,1,27,3200,1,1,2,1]},
+  {"name":"Grace — Low Risk",        "features":[0,0,40,7500,0,0,12,3]},
+  {"name":"Henry — Very Low Risk",   "features":[1,0,52,15000,0,1,20,4]},
+]};
+
+/* sigmoid + local approximation (fallback when AWS token expired) */
+function sig(x){return 1/(1+Math.exp(-x));}
+function approx(f){
+  const [ht,ot,age,inc,ms,gm,yr,sat]=f;
+  let s=-1.65;
+  if(ot===1) s+=2.10;
+  if(ms===1) s+=0.95;
+  s+=(2.5-sat)*0.75;
+  s-=Math.min(inc,20000)/20000*3.00;
+  s-=Math.min(yr,20)/20*2.20;
+  s-=Math.min(Math.max(age-18,0),32)/32*0.80;
+  if(ht===1) s-=1.30;
+  if(gm===1) s-=0.15;
+  const p=Math.min(0.96,Math.max(0.04,sig(s)));
+  return{attrition_probability:+p.toFixed(5),prediction:p>=0.5?1:0,
+    mode:'approximation',probabilities:{'No Attrition':+(1-p).toFixed(5),'Attrition':+p.toFixed(5)}};
+}
+
+/* helpers */
+function riskClass(ap){return ap>=0.70?'rvh':ap>=0.50?'rhi':ap>=0.35?'rme':'rlo';}
+function riskLabel(ap){
+  if(ap>=0.70)return'🔴 VERY HIGH';
+  if(ap>=0.50)return'🟠 HIGH';
+  if(ap>=0.35)return'🟡 MEDIUM';
+  if(ap>=0.18)return'🟢 LOW';
+  return'🟢 VERY LOW';
+}
+function log(msg,cls=''){
+  const t=document.getElementById('logTerm');
+  if(!t)return;
+  const d=document.createElement('div');
+  d.className='log-line '+(cls||'');
+  d.textContent=`[${new Date().toLocaleTimeString('en-GB',{hour12:false})}] ${msg}`;
+  t.appendChild(d);t.scrollTop=t.scrollHeight;
+}
+
+/* buttons */
+function loadExample(){
+  document.getElementById('bInput').value=JSON.stringify(EXAMPLE,null,2);
+  log('Example loaded — 8 employees covering all risk levels','inf');
+  log('Click RUN BATCH to score them','inf');
+}
+function clearAll(){
+  document.getElementById('bInput').value='';
+  document.getElementById('resWrap').style.display='none';
+  log('Cleared');
+}
+
+/* local batch fallback */
+function localBatch(employees){
+  const preds=[]; const counts={HIGH:0,MEDIUM:0,LOW:0};
+  employees.forEach((emp,i)=>{
+    const name=emp.name||`Employee_${i+1}`;
+    const f=emp.features||[];
+    if(f.length!==8){preds.push({name,error:'Need exactly 8 features'});return;}
+    const r=approx(f);
+    const ap=r.attrition_probability;
+    const risk=ap>=0.35?'HIGH':ap>=0.18?'MEDIUM':'LOW';
+    counts[risk]=(counts[risk]||0)+1;
+    preds.push({name,prediction:r.prediction,
+      predicted_class:r.prediction===1?'Attrition':'No Attrition',
+      attrition_probability:ap,retention_probability:r.probabilities['No Attrition'],
+      risk_level:risk,mode:'approximation'});
+  });
+  return{total:employees.length,success:preds.length,failed:0,
+    summary:{high_risk:counts.HIGH||0,medium_risk:counts.MEDIUM||0,
+             low_risk:counts.LOW||0,
+             attrition_count:preds.filter(p=>p.prediction===1).length},
+    predictions:preds,errors:[]};
+}
+
+/* render results table */
+function renderResults(result){
+  const s=result.summary||{};
+  document.getElementById('rTotal').textContent=result.total||0;
+  document.getElementById('rHigh').textContent=s.high_risk||0;
+  document.getElementById('rMed').textContent=s.medium_risk||0;
+  document.getElementById('rLow').textContent=s.low_risk||0;
+
+  const tbody=document.getElementById('rBody');
+  tbody.innerHTML='';
+  let n=1;
+  (result.predictions||[]).forEach(p=>{
+    const ap=+(p.attrition_probability||0);
+    const rp=+(p.retention_probability||(1-ap));
+    const pct=(ap*100).toFixed(1), rpct=(rp*100).toFixed(1);
+    const isAtt=p.prediction===1||p.predicted_class==='Attrition';
+    const rc=riskClass(ap), rl=riskLabel(ap);
+    const live=(p.mode||'').includes('sagemaker');
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td style="color:var(--dim)">${n++}</td>
+      <td style="font-weight:600">${p.name}</td>
+      <td class="${isAtt?'ayes':'ano'}">${isAtt?'⚠ ATTRITION':'✓ RETAINED'}</td>
+      <td style="color:${isAtt?'var(--red)':'var(--green)'};font-weight:700">${pct}%</td>
+      <td style="color:var(--dim)">${rpct}%</td>
+      <td class="${rc}">${rl}</td>
+      <td style="color:var(--dim);font-size:9px">${live?'✅ LIVE':'⚡ APPROX'}</td>`;
+    tbody.appendChild(tr);
+  });
+  (result.errors||[]).forEach(e=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td style="color:var(--dim)">${n++}</td>
+      <td>${e.name}</td><td colspan="5" style="color:var(--red)">ERROR: ${e.error}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  const wrap=document.getElementById('resWrap');
+  wrap.style.display='block';
+  setTimeout(()=>wrap.scrollIntoView({behavior:'smooth'}),100);
+  log(`✅ Done: ${result.success} scored · High:${s.high_risk||0} Med:${s.medium_risk||0} Low:${s.low_risk||0}`,'ok');
+}
+
+/* main run */
+async function runBatch(){
+  const val=document.getElementById('bInput').value.trim();
+  if(!val){log('❌ Nothing to run — paste JSON or click LOAD EXAMPLE','err');return;}
+  let payload;
+  try{payload=JSON.parse(val);}
+  catch(e){log('❌ Invalid JSON: '+e.message,'err');return;}
+  if(!payload.employees||!Array.isArray(payload.employees)){
+    log('❌ JSON must have "employees" array','err');return;
+  }
+  const btn=document.getElementById('runBtn');
+  const btxt=document.getElementById('runTxt');
+  btn.disabled=true;
+  btxt.textContent='⟳ PROCESSING '+payload.employees.length+'...';
+  log('Sending '+payload.employees.length+' employees to /api/predict/batch','inf');
+
+  let result;
+  try{
+    const r=await fetch('/api/predict/batch',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    result=await r.json();
+    if(r.status===401||result.error==='EXPIRED_TOKEN'){
+      log('⚠ AWS token expired — using local approximation','err');
+      result=localBatch(payload.employees);
+    } else if(result.error){
+      log('API error (using approx): '+result.error,'err');
+      result=localBatch(payload.employees);
+    } else {
+      log('SageMaker response received','ok');
+    }
+  }catch(e){
+    log('Network error — using local approximation','err');
+    result=localBatch(payload.employees);
+  }
+
+  btn.disabled=false;
+  btxt.textContent='▶ RUN BATCH';
+  renderResults(result);
+}
+
+/* health check */
+function checkHealth(){
+  fetch('/api/health').then(r=>r.json()).then(h=>{
+    const dot=document.getElementById('stDot');
+    const lbl=document.getElementById('stLabel');
+    if(!dot||!lbl)return;
+    if(h.ready){
+      dot.className='dot live';lbl.textContent='ENDPOINT LIVE';lbl.style.color='var(--green)';
+      log('SageMaker connected: '+h.endpoint_name+' ['+h.endpoint_status+']','ok');
+    } else if(h.endpoint_status==='expired_token'||!h.token_valid){
+      dot.className='dot dead';lbl.textContent='TOKEN EXPIRED';lbl.style.color='var(--red)';
+      log('⚠ AWS session token expired — batch will use approximation','err');
+    } else {
+      dot.className='dot dead';
+      lbl.textContent=h.credentials==='missing'?'CREDS MISSING':'ENDPOINT OFFLINE';
+      lbl.style.color='var(--red)';
+      log('Endpoint offline — batch will use local approximation','err');
+    }
+  }).catch(()=>{
+    log('Health check failed','err');
+  });
+}
+
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    const l=document.getElementById('loader');
+    if(l) l.classList.add('gone');
+  },800);
+  checkHealth();
+  log('Batch module ready — click LOAD EXAMPLE to start','ok');
+});
+</script>
 </body>
 </html>
