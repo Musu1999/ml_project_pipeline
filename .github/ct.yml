@@ -1,0 +1,228 @@
+name: CT — Continuous Training
+
+# ─────────────────────────────────────────────────────────────────
+# TRIGGER : src/ code changes on main, weekly Sunday, or manual
+# PURPOSE : Auto-retrain → evaluate → quality gate
+#           If gate passes  → CD pipeline auto-triggers
+#           If gate fails   → CD is blocked, error logged
+# ─────────────────────────────────────────────────────────────────
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why are you retraining?'
+        default: 'Manual trigger'
+
+  push:
+    branches: [main]
+    paths:
+      - 'src/data/**'
+      - 'src/model/**'
+      - 'src/evaluation/**'
+      - 'data/**'
+
+  schedule:
+    - cron: '0 0 * * 0'   # Every Sunday midnight UTC
+
+env:
+  AWS_REGION:         ${{ vars.AWS_REGION }}
+  S3_BUCKET:          ${{ vars.S3_BUCKET }}
+  PROJECT_NAME:       ${{ vars.PROJECT_NAME }}
+  ENDPOINT_NAME:      ${{ vars.ENDPOINT_NAME }}
+  SAGEMAKER_ROLE_ARN: ${{ secrets.SAGEMAKER_ROLE_ARN }}
+  MIN_ACCURACY:       '0.80'
+  MIN_ROC_AUC:        '0.75'
+  MIN_RECALL:         '0.50'
+
+jobs:
+
+  # STAGE 1 — unit tests must pass before any cloud work
+  pre-train-checks:
+    name: Pre-Train Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install test deps
+        run: pip install pytest boto3 pandas numpy scikit-learn xgboost joblib
+      - name: Run unit tests
+        run: pytest tests/test_pipeline.py -v --tb=short -q
+      - name: Summary
+        run: |
+          echo "### Pre-Train Checks" >> $GITHUB_STEP_SUMMARY
+          echo "Unit tests passed — proceeding to AWS training" >> $GITHUB_STEP_SUMMARY
+
+  # STAGE 2 — upload raw CSV to S3
+  data-upload:
+    name: Data Upload to S3
+    runs-on: ubuntu-latest
+    needs: pre-train-checks
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - run: pip install boto3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Upload data
+        env:
+          S3_BUCKET:    ${{ vars.S3_BUCKET }}
+          PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+        run: python src/data/data_download.py
+
+  # STAGE 3 — feature engineering + 80/20 split
+  preprocess:
+    name: Preprocess Data
+    runs-on: ubuntu-latest
+    needs: data-upload
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - run: pip install boto3 pandas numpy scikit-learn joblib
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Preprocess
+        env:
+          S3_BUCKET:    ${{ vars.S3_BUCKET }}
+          PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+        run: python src/data/data_preprocess.py
+
+  # STAGE 4 — train XGBoost
+  train:
+    name: Train XGBoost Model
+    runs-on: ubuntu-latest
+    needs: preprocess
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - run: pip install boto3 pandas numpy scikit-learn xgboost joblib
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Train
+        env:
+          S3_BUCKET:     ${{ vars.S3_BUCKET }}
+          PROJECT_NAME:  ${{ vars.PROJECT_NAME }}
+          LEARNING_RATE: '0.1'
+          MAX_DEPTH:     '3'
+          N_ESTIMATORS:  '50'
+          SUBSAMPLE:     '0.8'
+        run: python src/model/model_train.py
+
+  # STAGE 5 — evaluate + quality gate
+  evaluate-and-gate:
+    name: Evaluate and Quality Gate
+    runs-on: ubuntu-latest
+    needs: train
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      gate_passed: ${{ steps.gate.outputs.gate_passed }}
+      accuracy:    ${{ steps.gate.outputs.accuracy }}
+      roc_auc:     ${{ steps.gate.outputs.roc_auc }}
+      recall:      ${{ steps.gate.outputs.recall }}
+      f1:          ${{ steps.gate.outputs.f1 }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - run: pip install boto3 pandas numpy scikit-learn xgboost joblib
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Run evaluation
+        env:
+          S3_BUCKET:    ${{ vars.S3_BUCKET }}
+          PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+        run: python src/evaluation/model_evaluate.py
+
+      - name: Quality Gate
+        id: gate
+        env:
+          S3_BUCKET:    ${{ vars.S3_BUCKET }}
+          PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+        run: |
+          python - << 'EOF'
+          import boto3, json, os, sys
+
+          s3      = boto3.client("s3", region_name=os.environ["AWS_REGION"])
+          bucket  = os.environ["S3_BUCKET"]
+          project = os.environ["PROJECT_NAME"]
+
+          obj     = s3.get_object(Bucket=bucket, Key=f"{project}/evaluation/evaluation_results.json")
+          metrics = json.loads(obj["Body"].read())
+
+          acc     = metrics["test_accuracy"]
+          roc_auc = metrics["test_roc_auc"]
+          recall  = metrics["test_recall"]
+          f1      = metrics["test_f1"]
+
+          min_acc = float(os.environ["MIN_ACCURACY"])
+          min_auc = float(os.environ["MIN_ROC_AUC"])
+          min_rec = float(os.environ["MIN_RECALL"])
+
+          passed  = acc >= min_acc and roc_auc >= min_auc and recall >= min_rec
+
+          print(f"\n{'='*50}")
+          print(f"  QUALITY GATE")
+          print(f"{'='*50}")
+          print(f"  Accuracy : {acc:.4f} >= {min_acc} → {'PASS' if acc>=min_acc else 'FAIL'}")
+          print(f"  ROC AUC  : {roc_auc:.4f} >= {min_auc} → {'PASS' if roc_auc>=min_auc else 'FAIL'}")
+          print(f"  Recall   : {recall:.4f} >= {min_rec} → {'PASS' if recall>=min_rec else 'FAIL'}")
+          print(f"  F1       : {f1:.4f}")
+          print(f"  RESULT   : {'PASSED — CD will deploy' if passed else 'FAILED — CD BLOCKED'}")
+          print(f"{'='*50}\n")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"gate_passed={'true' if passed else 'false'}\n")
+              f.write(f"accuracy={acc:.4f}\n")
+              f.write(f"roc_auc={roc_auc:.4f}\n")
+              f.write(f"recall={recall:.4f}\n")
+              f.write(f"f1={f1:.4f}\n")
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write("### Quality Gate Results\n\n")
+              f.write("| Metric | Value | Min Required | Result |\n")
+              f.write("|--------|-------|--------------|--------|\n")
+              f.write(f"| Accuracy | {acc:.4f} | {min_acc} | {'PASS' if acc>=min_acc else 'FAIL'} |\n")
+              f.write(f"| ROC AUC  | {roc_auc:.4f} | {min_auc} | {'PASS' if roc_auc>=min_auc else 'FAIL'} |\n")
+              f.write(f"| Recall   | {recall:.4f} | {min_rec} | {'PASS' if recall>=min_rec else 'FAIL'} |\n")
+              f.write(f"| F1 Score | {f1:.4f} | — | INFO |\n\n")
+              if passed:
+                  f.write("## Gate PASSED — CD pipeline will now deploy\n")
+              else:
+                  f.write("## Gate FAILED — Deployment BLOCKED\n")
+                  f.write("> Model did not meet minimum thresholds.\n")
+
+          if not passed:
+              sys.exit(1)
+          EOF

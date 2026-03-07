@@ -52,7 +52,6 @@ def create_sagemaker_model(bucket, prefix, role_arn, region):
 
     model_key = model_keys[0]
     logger.info(f"Found: s3://{bucket}/{model_key}")
-
     # 2. Download pkl and convert to XGBoost native format
     logger.info("Downloading xgboost_model.pkl ...")
     pkl_bytes = s3.get_object(Bucket=bucket, Key=model_key)["Body"].read()

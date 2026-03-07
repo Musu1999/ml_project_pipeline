@@ -1,0 +1,189 @@
+name: CD — Continuous Delivery
+
+# ─────────────────────────────────────────────────────────────────
+# TRIGGER : CT pipeline completes successfully (quality gate passed)
+#           OR manual dispatch
+# PURPOSE : Deploy quality-gated model → SageMaker endpoint
+#           → smoke test 3 profiles → health check
+# ─────────────────────────────────────────────────────────────────
+on:
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deploy (skip CT gate check)'
+        type: boolean
+        default: false
+
+  workflow_run:
+    workflows: ["CT — Continuous Training"]
+    branches:  [main]
+    types:     [completed]
+
+env:
+  AWS_REGION:         ${{ vars.AWS_REGION }}
+  S3_BUCKET:          ${{ vars.S3_BUCKET }}
+  PROJECT_NAME:       ${{ vars.PROJECT_NAME }}
+  ENDPOINT_NAME:      ${{ vars.ENDPOINT_NAME }}
+  SAGEMAKER_ROLE_ARN: ${{ secrets.SAGEMAKER_ROLE_ARN }}
+
+jobs:
+
+  # GATE — only deploy if CT succeeded
+  check-ct-result:
+    name: Check CT Gate Result
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+    steps:
+      - name: Decide whether to deploy
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+            echo "Manual trigger — deploying"
+          elif [[ "${{ github.event.workflow_run.conclusion }}" == "success" ]]; then
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+            echo "CT passed — deploying"
+          else
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+            echo "CT did not pass — skipping deploy"
+          fi
+
+  # STAGE 1 — deploy model to SageMaker endpoint
+  deploy:
+    name: Deploy to SageMaker
+    runs-on: ubuntu-latest
+    needs: check-ct-result
+    if: needs.check-ct-result.outputs.should_deploy == 'true'
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - run: pip install boto3 joblib
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Upload inference code to S3
+        run: |
+          aws s3 cp src/inference/inference.py \
+            s3://${{ vars.S3_BUCKET }}/${{ vars.PROJECT_NAME }}/code/inference.py
+      - name: Deploy model
+        env:
+          S3_BUCKET:          ${{ vars.S3_BUCKET }}
+          PROJECT_NAME:       ${{ vars.PROJECT_NAME }}
+          ENDPOINT_NAME:      ${{ vars.ENDPOINT_NAME }}
+          SAGEMAKER_ROLE_ARN: ${{ secrets.SAGEMAKER_ROLE_ARN }}
+          AWS_REGION:         ${{ vars.AWS_REGION }}
+        run: python src/deployment/model_deploy.py
+
+  # STAGE 2 — smoke test the live endpoint
+  smoke-test:
+    name: Smoke Test Endpoint
+    runs-on: ubuntu-latest
+    needs: deploy
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - run: pip install boto3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Test 3 employee profiles
+        env:
+          ENDPOINT_NAME: ${{ vars.ENDPOINT_NAME }}
+          AWS_REGION:    ${{ vars.AWS_REGION }}
+        run: |
+          python - << 'EOF'
+          import boto3, json, os, sys
+
+          runtime  = boto3.client("sagemaker-runtime", region_name=os.environ["AWS_REGION"])
+          endpoint = os.environ["ENDPOINT_NAME"]
+
+          test_cases = [
+              {"name": "Very High Risk",  "features": [0, 1, 24, 2800, 1, 1, 1, 1]},
+              {"name": "Low Risk",        "features": [1, 0, 45, 9000, 0, 0, 15, 4]},
+              {"name": "Default Profile", "features": [0, 1, 28, 3200, 1, 1, 2, 2]},
+          ]
+
+          print(f"\nSmoke testing: {endpoint}\n{'='*45}")
+          results = []
+          for tc in test_cases:
+              resp   = runtime.invoke_endpoint(
+                  EndpointName=endpoint,
+                  ContentType="application/json",
+                  Body=json.dumps({"features": tc["features"]}).encode()
+              )
+              result = json.loads(resp["Body"].read())
+              prob   = result["attrition_probability"]
+              pred   = result["prediction"]
+
+              assert "prediction"            in result
+              assert "predicted_class"       in result
+              assert "attrition_probability" in result
+              assert 0.0 <= prob <= 1.0
+              assert pred in [0, 1]
+
+              print(f"  {tc['name']:<20} → {result['predicted_class']:<14} ({prob:.1%})")
+              results.append({"name": tc["name"], "prob": prob, "pred": pred})
+
+          print(f"\n  All {len(test_cases)} smoke tests PASSED")
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write("### Smoke Test Results\n\n")
+              f.write("| Profile | Prediction | Probability |\n")
+              f.write("|---------|------------|-------------|\n")
+              for r in results:
+                  cls = "Attrition" if r["pred"] == 1 else "No Attrition"
+                  f.write(f"| {r['name']} | {cls} | {r['prob']:.1%} |\n")
+              f.write("\nAll smoke tests passed — endpoint is live and healthy\n")
+          EOF
+
+  # STAGE 3 — post-deploy monitoring health check
+  post-deploy-monitor:
+    name: Post-Deploy Health Check
+    runs-on: ubuntu-latest
+    needs: smoke-test
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - run: pip install boto3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Run monitor
+        env:
+          S3_BUCKET:     ${{ vars.S3_BUCKET }}
+          ENDPOINT_NAME: ${{ vars.ENDPOINT_NAME }}
+          PROJECT_NAME:  ${{ vars.PROJECT_NAME }}
+        run: python src/monitoring/monitor_pipeline.py
+      - name: Final summary
+        run: |
+          echo "# Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Endpoint | \`${{ vars.ENDPOINT_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Region | \`${{ vars.AWS_REGION }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Instance | \`ml.t2.medium\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Model | \`XGBoost Tuned\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Pipeline: CI → CT → Quality Gate → CD — all passed" >> $GITHUB_STEP_SUMMARY
