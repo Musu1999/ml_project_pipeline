@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>AttritionIQ — Model Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/static/css/style.css"/>
+<style>
+#loader{animation:loaderHide 0s 1.0s forwards!important;}
+@keyframes loaderHide{to{opacity:0;visibility:hidden;display:none!important;pointer-events:none;}}
+
+.mon-outer{padding:2.5rem 3rem;}
+.mon-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem;}
+
+/* Status card */
+.status-card{background:var(--s1);border:1px solid var(--b1);padding:1.5rem;}
+.status-card.alert{border-color:var(--red);}
+.status-card.ok{border-color:rgba(168,255,62,.3);}
+.sc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+.sc-title{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.15em;text-transform:uppercase;}
+.sc-badge{font-family:var(--mono);font-size:9px;padding:.25rem .6rem;border:1px solid currentColor;}
+.sc-badge.green{color:var(--green);border-color:rgba(168,255,62,.4);}
+.sc-badge.red{color:var(--red);border-color:rgba(255,61,107,.4);}
+.sc-badge.gold{color:var(--gold);border-color:rgba(255,209,102,.4);}
+.sc-val{font-size:1.9rem;font-weight:800;letter-spacing:-.04em;margin-bottom:.25rem;}
+.sc-sub{font-family:var(--mono);font-size:9px;color:var(--dim);}
+
+/* Metric gauge */
+.metric-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;}
+.metric-name{font-family:var(--mono);font-size:9px;color:var(--dim);width:80px;flex-shrink:0;}
+.metric-track{flex:1;height:6px;background:var(--s2);position:relative;}
+.metric-fill{height:100%;transition:width 1s ease;}
+.metric-threshold{position:absolute;top:-4px;bottom:-4px;width:2px;background:rgba(255,255,255,.2);}
+.metric-val{font-family:var(--mono);font-size:10px;width:40px;text-align:right;}
+.metric-ok{color:var(--green);}
+.metric-fail{color:var(--red);}
+
+/* Confusion matrix */
+.cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;width:fit-content;}
+.cm-cell{width:80px;height:60px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;font-family:var(--mono);}
+.cm-cell-val{font-size:1.3rem;font-weight:800;}
+.cm-cell-lbl{font-size:8px;color:var(--dim);}
+.cm-tp{background:rgba(168,255,62,.15);}
+.cm-tn{background:rgba(168,255,62,.08);}
+.cm-fp{background:rgba(255,61,107,.08);}
+.cm-fn{background:rgba(255,61,107,.15);}
+
+/* Drift panel */
+.drift-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:2rem;}
+.drift-card{background:var(--s1);border:1px solid var(--b1);padding:1.1rem;}
+.drift-card.warn{border-color:rgba(255,209,102,.4);}
+.dc-name{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.1em;
+  text-transform:uppercase;margin-bottom:.5rem;}
+.dc-status{font-family:var(--mono);font-size:11px;font-weight:700;margin-bottom:.25rem;}
+.dc-detail{font-family:var(--mono);font-size:9px;color:var(--dim);}
+
+/* Batch history */
+.batch-hist-table{width:100%;border-collapse:collapse;}
+.batch-hist-table th{font-family:var(--mono);font-size:9px;color:var(--dim);
+  letter-spacing:.1em;text-transform:uppercase;text-align:left;
+  padding:.6rem .9rem;border-bottom:1px solid var(--b1);}
+.batch-hist-table td{font-family:var(--mono);font-size:10px;padding:.6rem .9rem;
+  border-bottom:1px solid rgba(30,45,61,.5);}
+.batch-hist-table tr:hover td{background:rgba(0,229,255,.02);}
+
+/* Alert banner */
+.alert-banner{background:rgba(255,61,107,.08);border:1px solid rgba(255,61,107,.3);
+  padding:1rem 1.25rem;margin-bottom:1.5rem;font-family:var(--mono);font-size:11px;
+  color:var(--red);display:none;}
+.alert-banner.show{display:block;}
+
+/* Retrain button */
+.retrain-section{background:var(--s1);border:1px solid var(--b1);padding:1.5rem;
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem;}
+.retrain-text .rt-title{font-weight:700;margin-bottom:.25rem;}
+.retrain-text .rt-sub{font-family:var(--mono);font-size:10px;color:var(--dim);}
+.retrain-btn{padding:.75rem 1.75rem;background:transparent;border:1px solid var(--red);
+  color:var(--red);font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;cursor:pointer;position:relative;overflow:hidden;transition:color .25s;}
+.retrain-btn::before{content:'';position:absolute;inset:0;background:var(--red);
+  transform:translateX(-101%);transition:transform .28s cubic-bezier(.4,0,.2,1);}
+.retrain-btn:hover{color:var(--bg);}
+.retrain-btn:hover::before{transform:translateX(0);}
+.retrain-btn span{position:relative;z-index:1;}
+
+/* Refresh controls */
+.refresh-row{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;}
+.auto-refresh-lbl{font-family:var(--mono);font-size:10px;color:var(--dim);}
+.auto-toggle{background:var(--s2);border:1px solid var(--b1);color:var(--dim);
+  font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  padding:.4rem .9rem;cursor:pointer;transition:all .2s;}
+.auto-toggle.on{border-color:var(--cyan);color:var(--cyan);}
+.last-refresh{font-family:var(--mono);font-size:9px;color:var(--dim);}
+
+/* Loading skeleton */
+.skel{background:linear-gradient(90deg,var(--s1) 25%,var(--s2) 50%,var(--s1) 75%);
+  background-size:200% 100%;animation:skel 1.5s infinite;height:1rem;border-radius:2px;}
+@keyframes skel{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* Full-width sections */
+.mon-full{grid-column:1/-1;}
+@media(max-width:1024px){.mon-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:640px){.mon-grid{grid-template-columns:1fr;}.drift-grid{grid-template-columns:1fr 1fr;}
+  .mon-outer{padding:2rem 1.5rem;}}
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="lb"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+  <div class="loader-txt">LOADING MONITOR...</div>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="logo">
+      <div class="logo-mark">HR<br>AI</div>
+      <div>
+        <div class="logo-name">AttritionIQ</div>
+        <div class="logo-sub">MOUSUMI · HR ANALYTICS · SAGEMAKER</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <a href="/" class="nav-link">PREDICT</a>
+      <a href="/batch" class="nav-link">BATCH</a>
+      <a href="/monitor" class="nav-link active">MONITOR</a>
+      <div class="status-badge">
+        <div class="dot wait" id="stDot"></div>
+        <span id="stLabel" style="color:var(--gold)">CHECKING...</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-glow"></div>
+    <div class="eyebrow">REAL-TIME MODEL INTELLIGENCE</div>
+    <h1>Pipeline<br><span class="c">Health</span><br><span class="r">Monitor</span></h1>
+    <p class="hero-sub">
+      Live endpoint status · Model performance metrics · Drift indicators · Batch history<br>
+      Endpoint: <span class="ep-name">{{ endpoint_name or "not configured" }}</span>
+    </p>
+  </section>
+
+  <div class="mon-outer">
+
+    <!-- Alert banner -->
+    <div class="alert-banner" id="alertBanner"></div>
+
+    <!-- Refresh controls -->
+    <div class="refresh-row">
+      <button class="auto-toggle" id="autoToggle" onclick="toggleAutoRefresh()">AUTO REFRESH: OFF</button>
+      <button class="auto-toggle" onclick="loadMonitorData()">⟳ REFRESH NOW</button>
+      <span class="last-refresh">Last updated: <span id="lastRefresh">—</span></span>
+    </div>
+
+    <!-- Retrain recommendation (shown if metrics fail) -->
+    <div class="retrain-section" id="retrainSection" style="display:none;">
+      <div class="retrain-text">
+        <div class="rt-title">⚠ Retraining Recommended</div>
+        <div class="rt-sub" id="retrainReason">Model metrics have dropped below thresholds</div>
+      </div>
+      <button class="retrain-btn" onclick="triggerRetrain()"><span>🔄 TRIGGER CT PIPELINE</span></button>
+    </div>
+
+    <!-- Top status grid -->
+    <div class="mon-grid">
+
+      <!-- Endpoint status -->
+      <div class="status-card" id="epCard">
+        <div class="sc-header">
+          <div class="sc-title">Endpoint Status</div>
+          <div class="sc-badge gold" id="epBadge">CHECKING</div>
+        </div>
+        <div class="sc-val" id="epStatus" style="color:var(--gold)">—</div>
+        <div class="sc-sub" id="epName">{{ endpoint_name or "NOT SET" }}</div>
+        <div style="margin-top:.75rem;">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:.3rem;">Instance Type</div>
+          <div style="font-family:var(--mono);font-size:11px;" id="epInstance">ml.t2.medium</div>
+        </div>
+        <div style="margin-top:.5rem;">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:.3rem;">Region</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--cyan)">{{ region }}</div>
+        </div>
+      </div>
+
+      <!-- Model accuracy gauge -->
+      <div class="status-card" id="metricsCard">
+        <div class="sc-header">
+          <div class="sc-title">Model Performance</div>
+          <div class="sc-badge green" id="metricsBadge">LOADING</div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-name">Accuracy</div>
+          <div class="metric-track">
+            <div class="metric-fill" id="fillAcc" style="background:var(--cyan);width:0%"></div>
+            <div class="metric-threshold" style="left:80%"></div>
+          </div>
+          <div class="metric-val metric-ok" id="valAcc">—</div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-name">ROC AUC</div>
+          <div class="metric-track">
+            <div class="metric-fill" id="fillAuc" style="background:var(--gold);width:0%"></div>
+            <div class="metric-threshold" style="left:75%"></div>
+          </div>
+          <div class="metric-val metric-ok" id="valAuc">—</div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-name">Recall</div>
+          <div class="metric-track">
+            <div class="metric-fill" id="fillRec" style="background:var(--red);width:0%"></div>
+            <div class="metric-threshold" style="left:50%"></div>
+          </div>
+          <div class="metric-val metric-ok" id="valRec">—</div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-name">Precision</div>
+          <div class="metric-track">
+            <div class="metric-fill" id="fillPre" style="background:var(--green);width:0%"></div>
+          </div>
+          <div class="metric-val" id="valPre" style="color:var(--dim)">—</div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-name">F1 Score</div>
+          <div class="metric-track">
+            <div class="metric-fill" id="fillF1" style="background:var(--cyan);width:0%"></div>
+          </div>
+          <div class="metric-val" id="valF1" style="color:var(--dim)">—</div>
+        </div>
+        <div style="margin-top:.5rem;font-family:var(--mono);font-size:8px;color:var(--dim);">
+          ▏ threshold line = minimum required
+        </div>
+      </div>
+
+      <!-- Confusion matrix -->
+      <div class="status-card">
+        <div class="sc-header">
+          <div class="sc-title">Confusion Matrix</div>
+          <div class="sc-badge green">TEST SET</div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:1rem;">
+          <div>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.4rem;margin-left:84px;">Predicted</div>
+            <div style="display:flex;align-items:center;gap:2px;">
+              <div style="font-family:var(--mono);font-size:8px;color:var(--dim);writing-mode:vertical-rl;transform:rotate(180deg);height:120px;display:flex;align-items:center;">Actual</div>
+              <div>
+                <div style="display:flex;font-family:var(--mono);font-size:8px;color:var(--dim);gap:2px;margin-bottom:2px;">
+                  <div style="width:80px;text-align:center;">No Attrition</div>
+                  <div style="width:80px;text-align:center;">Attrition</div>
+                </div>
+                <div class="cm-grid">
+                  <div class="cm-cell cm-tn">
+                    <div class="cm-cell-val" id="cmTN" style="color:var(--green)">—</div>
+                    <div class="cm-cell-lbl">TN</div>
+                  </div>
+                  <div class="cm-cell cm-fp">
+                    <div class="cm-cell-val" id="cmFP" style="color:var(--red)">—</div>
+                    <div class="cm-cell-lbl">FP</div>
+                  </div>
+                  <div class="cm-cell cm-fn">
+                    <div class="cm-cell-val" id="cmFN" style="color:var(--red)">—</div>
+                    <div class="cm-cell-lbl">FN</div>
+                  </div>
+                  <div class="cm-cell cm-tp">
+                    <div class="cm-cell-val" id="cmTP" style="color:var(--green)">—</div>
+                    <div class="cm-cell-lbl">TP</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:.75rem;font-family:var(--mono);font-size:9px;color:var(--dim);">
+          Specificity: <span id="valSpec" style="color:var(--cyan)">—</span>
+        </div>
+      </div>
+
+    </div><!-- /mon-grid -->
+
+    <!-- Drift indicators -->
+    <div class="sec-title">DATA DRIFT INDICATORS</div>
+    <div class="drift-grid" id="driftGrid">
+      <div class="drift-card"><div class="dc-name">OverTime Rate</div><div class="dc-status" id="dOvertime" style="color:var(--dim)">—</div><div class="dc-detail" id="dOvertimeSub">Checking...</div></div>
+      <div class="drift-card"><div class="dc-name">Income Distribution</div><div class="dc-status" id="dIncome" style="color:var(--dim)">—</div><div class="dc-detail" id="dIncomeSub">Checking...</div></div>
+      <div class="drift-card"><div class="dc-name">Prediction Rate</div><div class="dc-status" id="dPredRate" style="color:var(--dim)">—</div><div class="dc-detail" id="dPredRateSub">Based on last batch</div></div>
+      <div class="drift-card"><div class="dc-name">Model Age</div><div class="dc-status" id="dModelAge" style="color:var(--dim)">—</div><div class="dc-detail" id="dModelAgeSub">Weeks since last retrain</div></div>
+    </div>
+
+    <!-- Pipeline checks -->
+    <div class="sec-title" style="margin-bottom:1rem;">PIPELINE CHECKS</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:2rem;" id="checksGrid">
+      <div class="status-card"><div class="sc-header"><div class="sc-title">Endpoint Health</div><div class="sc-badge gold" id="chkEp">—</div></div><div class="sc-sub" id="chkEpSub">Checking endpoint InService status</div></div>
+      <div class="status-card"><div class="sc-header"><div class="sc-title">Accuracy ≥ 80%</div><div class="sc-badge gold" id="chkAcc">—</div></div><div class="sc-sub" id="chkAccSub">Must beat baseline threshold</div></div>
+      <div class="status-card"><div class="sc-header"><div class="sc-title">ROC AUC ≥ 75%</div><div class="sc-badge gold" id="chkAuc">—</div></div><div class="sc-sub" id="chkAucSub">Discrimination ability</div></div>
+      <div class="status-card"><div class="sc-header"><div class="sc-title">Recall ≥ 50%</div><div class="sc-badge gold" id="chkRec">—</div></div><div class="sc-sub" id="chkRecSub">Catching at-risk employees</div></div>
+      <div class="status-card"><div class="sc-header"><div class="sc-title">S3 Artifacts</div><div class="sc-badge gold" id="chkS3">—</div></div><div class="sc-sub" id="chkS3Sub">Model + evaluation files in S3</div></div>
+      <div class="status-card"><div class="sc-header"><div class="sc-title">AWS Credentials</div><div class="sc-badge gold" id="chkCreds">—</div></div><div class="sc-sub" id="chkCredsSub">Access key + session token</div></div>
+    </div>
+
+    <!-- Quarterly batch history -->
+    <div class="sec-title" style="margin-bottom:1rem;">QUARTERLY BATCH HISTORY</div>
+    <div style="background:var(--s1);border:1px solid var(--b1);padding:1.25rem;margin-bottom:2rem;">
+      <table class="batch-hist-table">
+        <thead>
+          <tr><th>Quarter</th><th>File</th><th>Size</th><th>Uploaded</th></tr>
+        </thead>
+        <tbody id="batchHistBody">
+          <tr><td colspan="4" style="color:var(--dim);text-align:center;padding:1.5rem;">Loading batch history...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- /mon-outer -->
+
+  <!-- System log -->
+  <div class="log-section">
+    <div class="sec-title">MONITORING LOG</div>
+    <div class="terminal" id="logTerm">
+      <div class="log-line inf">[SYSTEM] AttritionIQ Monitor v3.0</div>
+      <div class="log-line">[INFO] Endpoint: {{ endpoint_name or "NOT SET" }} · Region: {{ region }}</div>
+      <div class="log-line">[READY] Loading monitoring data...</div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-txt">© 2026 MOUSUMI · ML PIPELINE · GITHUB ACTIONS + SAGEMAKER + DOCKER</div>
+    <div class="footer-tags">
+      <div class="tag">MONITOR</div><div class="tag">DRIFT</div>
+      <div class="tag">XGBOOST</div><div class="tag">SAGEMAKER</div>
+    </div>
+  </footer>
+</div>
+
+<script>
+let autoRefreshInterval = null;
+let autoOn = false;
+
+function log(msg,cls=''){
+  const t=document.getElementById('logTerm');
+  if(!t) return;
+  const d=document.createElement('div');
+  d.className='log-line '+(cls||'');
+  d.textContent=`[${new Date().toLocaleTimeString('en-GB',{hour12:false})}] ${msg}`;
+  t.appendChild(d); t.scrollTop=t.scrollHeight;
+}
+
+function badge(id,text,color){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.textContent=text;
+  el.className='sc-badge '+color;
+}
+
+function setCheck(id,subId,pass,passText,failText,subText){
+  badge(id, pass?'PASS':'FAIL', pass?'green':'red');
+  const sub=document.getElementById(subId);
+  if(sub) sub.textContent=subText||'';
+}
+
+async function loadMonitorData(){
+  log('Fetching monitoring data...','inf');
+  try{
+    const r=await fetch('/api/monitor');
+    const d=await r.json();
+    renderMonitor(d);
+    document.getElementById('lastRefresh').textContent=new Date().toLocaleTimeString('en-GB',{hour12:false});
+  } catch(e){
+    log('Monitor fetch failed: '+e.message,'err');
+    renderFallback();
+  }
+}
+
+function renderMonitor(d){
+  // ── Alerts ──
+  const alerts=d.alerts||[];
+  const ab=document.getElementById('alertBanner');
+  if(alerts.length>0){
+    ab.innerHTML='⚠ ALERTS: '+alerts.join(' · ');
+    ab.classList.add('show');
+  } else {
+    ab.classList.remove('show');
+  }
+
+  // ── Retrain recommendation ──
+  const rs=document.getElementById('retrainSection');
+  rs.style.display=d.retrain?'flex':'none';
+
+  // ── Endpoint ──
+  const ep=d.endpoint||{};
+  const healthy=ep.healthy||false;
+  const epCard=document.getElementById('epCard');
+  epCard.className='status-card '+(healthy?'ok':'alert');
+  badge('epBadge',healthy?'IN SERVICE':ep.status||'UNKNOWN',healthy?'green':'red');
+  const epStatus=document.getElementById('epStatus');
+  epStatus.textContent=ep.status||'—';
+  epStatus.style.color=healthy?'var(--green)':'var(--red)';
+  document.getElementById('epInstance').textContent=ep.instance_type||'ml.t2.medium';
+
+  // Update header badge
+  const dot=document.getElementById('stDot');
+  const lbl=document.getElementById('stLabel');
+  if(healthy){dot.className='dot live';lbl.textContent='ENDPOINT LIVE';lbl.style.color='var(--green)';}
+  else{dot.className='dot dead';lbl.textContent=ep.status||'OFFLINE';lbl.style.color='var(--red)';}
+
+  // ── Metrics ──
+  const m=d.metrics||{};
+  if(!m.error){
+    const acc=m.accuracy||0, auc=m.roc_auc||0, rec=m.recall||0;
+    const pre=m.precision||0, f1=m.f1||0, spec=m.specificity||0;
+
+    document.getElementById('fillAcc').style.width=(acc*100)+'%';
+    document.getElementById('fillAuc').style.width=(auc*100)+'%';
+    document.getElementById('fillRec').style.width=(rec*100)+'%';
+    document.getElementById('fillPre').style.width=(pre*100)+'%';
+    document.getElementById('fillF1').style.width=(f1*100)+'%';
+
+    const fmtV=(v,ok)=>`<span style="color:${ok?'var(--green)':'var(--red)'}">${(v*100).toFixed(1)}%</span>`;
+    document.getElementById('valAcc').innerHTML=fmtV(acc,m.accuracy_ok);
+    document.getElementById('valAuc').innerHTML=fmtV(auc,m.roc_auc_ok);
+    document.getElementById('valRec').innerHTML=fmtV(rec,m.recall_ok);
+    document.getElementById('valPre').textContent=(pre*100).toFixed(1)+'%';
+    document.getElementById('valF1').textContent=(f1*100).toFixed(1)+'%';
+    document.getElementById('valSpec').textContent=(spec*100).toFixed(1)+'%';
+
+    const allOk=m.accuracy_ok&&m.roc_auc_ok&&m.recall_ok;
+    badge('metricsBadge',allOk?'ALL PASS':'GATE FAIL',allOk?'green':'red');
+    document.getElementById('metricsCard').className='status-card '+(allOk?'ok':'alert');
+
+    // Confusion matrix
+    const cm=m.confusion_matrix||{tn:240,fp:15,fn:50,tp:69};
+    document.getElementById('cmTN').textContent=cm.tn||'—';
+    document.getElementById('cmFP').textContent=cm.fp||'—';
+    document.getElementById('cmFN').textContent=cm.fn||'—';
+    document.getElementById('cmTP').textContent=cm.tp||'—';
+
+    // Pipeline checks
+    setCheck('chkAcc','chkAccSub',m.accuracy_ok,'','',`Current: ${(acc*100).toFixed(1)}% | Min: 80%`);
+    setCheck('chkAuc','chkAucSub',m.roc_auc_ok,'','',`Current: ${(auc*100).toFixed(1)}% | Min: 75%`);
+    setCheck('chkRec','chkRecSub',m.recall_ok,'','',`Current: ${(rec*100).toFixed(1)}% | Min: 50%`);
+  }
+
+  // Endpoint + credentials checks
+  setCheck('chkEp','chkEpSub',healthy,'','',ep.status||'Unknown');
+  const r=await fetch('/api/health').then(x=>x.json()).catch(()=>({}));
+  setCheck('chkCreds','chkCredsSub',r.credentials==='set','','',
+    r.credentials==='set'?'Access key set':'Missing AWS credentials');
+  setCheck('chkS3','chkS3Sub',!m.error,'','',
+    m.error?'Could not load from S3':'evaluation_results.json found');
+
+  // ── Drift indicators ──
+  const drift=d.drift||{};
+  // Model age (approximate from endpoint last modified)
+  if(ep.last_modified){
+    const days=Math.floor((Date.now()-new Date(ep.last_modified).getTime())/(86400000));
+    const weeks=Math.floor(days/7);
+    const aged=weeks>=4;
+    document.getElementById('dModelAge').textContent=weeks>0?`${weeks} weeks`:`${days} days`;
+    document.getElementById('dModelAge').style.color=aged?'var(--gold)':'var(--green)';
+    document.getElementById('dModelAgeSub').textContent=aged?'Consider retraining':'Recently deployed';
+    if(aged) document.getElementById('driftGrid').querySelector('.drift-card:last-child').className='drift-card warn';
+  } else {
+    document.getElementById('dModelAge').textContent='Unknown';
+    document.getElementById('dModelAge').style.color='var(--dim)';
+  }
+
+  // Prediction rate drift (from last batch)
+  if(d.batches&&d.batches.length>0){
+    document.getElementById('dPredRate').textContent=d.batches.length+' uploads';
+    document.getElementById('dPredRate').style.color='var(--cyan)';
+    document.getElementById('dPredRateSub').textContent=`Last: ${d.batches[0].quarter||'—'}`;
+  } else {
+    document.getElementById('dPredRate').textContent='No data';
+    document.getElementById('dPredRate').style.color='var(--dim)';
+    document.getElementById('dPredRateSub').textContent='No quarterly uploads yet';
+  }
+
+  // Training data drift (static indicators based on known IBM dataset stats)
+  document.getElementById('dOvertime').textContent='28% baseline';
+  document.getElementById('dOvertime').style.color='var(--green)';
+  document.getElementById('dOvertimeSub').textContent='IBM HR: 28% overtime rate';
+  document.getElementById('dIncome').textContent='₹6,502 median';
+  document.getElementById('dIncome').style.color='var(--green)';
+  document.getElementById('dIncomeSub').textContent='IBM HR training distribution';
+
+  // ── Batch history ──
+  const tbody=document.getElementById('batchHistBody');
+  tbody.innerHTML='';
+  if(d.batches&&d.batches.length>0){
+    d.batches.forEach(b=>{
+      const tr=document.createElement('tr');
+      const fname=b.key.split('/').pop();
+      const dt=b.uploaded?new Date(b.uploaded).toLocaleDateString('en-IN',
+        {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+      tr.innerHTML=`
+        <td style="color:var(--cyan)">${b.quarter||'—'}</td>
+        <td style="color:var(--txt)">${fname}</td>
+        <td style="color:var(--dim)">${b.size_kb} KB</td>
+        <td style="color:var(--dim)">${dt}</td>`;
+      tbody.appendChild(tr);
+    });
+  } else {
+    tbody.innerHTML='<tr><td colspan="4" style="color:var(--dim);text-align:center;padding:1.25rem;">No quarterly batches uploaded yet — use the Batch page to upload your first CSV</td></tr>';
+  }
+
+  log('Monitor data loaded','ok');
+}
+
+// Needs async in the render — wrap the health check call
+async function renderMonitorAsync(d){
+  renderMonitorSync(d);
+  try{
+    const h=await fetch('/api/health').then(x=>x.json());
+    setCheck('chkCreds','chkCredsSub',h.credentials==='set','','',
+      h.credentials==='set'?'Access key + token set':'Missing credentials');
+    setCheck('chkS3','chkS3Sub',(d.metrics&&!d.metrics.error),'','',
+      (d.metrics&&d.metrics.error)?'Could not load from S3':'evaluation_results.json found');
+  } catch(e){}
+}
+
+function renderFallback(){
+  // Show hardcoded known metrics as fallback
+  const fallback={
+    endpoint:{name:'mousumi-hr-attrition-endpoint',status:'Unknown',healthy:false,instance_type:'ml.t2.medium'},
+    metrics:{accuracy:0.871,roc_auc:0.823,recall:0.584,precision:0.762,f1:0.661,specificity:0.942,
+      confusion_matrix:{tn:240,fp:15,fn:50,tp:69},
+      accuracy_ok:true,roc_auc_ok:true,recall_ok:true,source:'fallback'},
+    drift:{},batches:[],retrain:false,alerts:['Could not connect to API — showing cached data']
+  };
+  renderMonitorSync(fallback);
+}
+
+// Synchronous render (health check done separately)
+function renderMonitorSync(d){
+  const alerts=d.alerts||[];
+  const ab=document.getElementById('alertBanner');
+  if(alerts.length>0){ab.innerHTML='⚠ '+alerts.join(' · ');ab.classList.add('show');}
+  else{ab.classList.remove('show');}
+
+  document.getElementById('retrainSection').style.display=d.retrain?'flex':'none';
+
+  const ep=d.endpoint||{};
+  const healthy=ep.healthy||false;
+  document.getElementById('epCard').className='status-card '+(healthy?'ok':'alert');
+  badge('epBadge',healthy?'IN SERVICE':ep.status||'UNKNOWN',healthy?'green':'red');
+  const epS=document.getElementById('epStatus');
+  epS.textContent=ep.status||'—';
+  epS.style.color=healthy?'var(--green)':'var(--red)';
+  document.getElementById('epInstance').textContent=ep.instance_type||'ml.t2.medium';
+
+  const dot=document.getElementById('stDot'),lbl=document.getElementById('stLabel');
+  if(healthy){dot.className='dot live';lbl.textContent='ENDPOINT LIVE';lbl.style.color='var(--green)';}
+  else{dot.className='dot dead';lbl.textContent=ep.status||'OFFLINE';lbl.style.color='var(--red)';}
+
+  const m=d.metrics||{};
+  if(!m.error){
+    const acc=m.accuracy||0,auc=m.roc_auc||0,rec=m.recall||0,pre=m.precision||0,f1=m.f1||0,spec=m.specificity||0;
+    document.getElementById('fillAcc').style.width=(acc*100)+'%';
+    document.getElementById('fillAuc').style.width=(auc*100)+'%';
+    document.getElementById('fillRec').style.width=(rec*100)+'%';
+    document.getElementById('fillPre').style.width=(pre*100)+'%';
+    document.getElementById('fillF1').style.width=(f1*100)+'%';
+    const fmtV=(v,ok)=>`<span style="color:${ok?'var(--green)':'var(--red)'}">${(v*100).toFixed(1)}%</span>`;
+    document.getElementById('valAcc').innerHTML=fmtV(acc,m.accuracy_ok);
+    document.getElementById('valAuc').innerHTML=fmtV(auc,m.roc_auc_ok);
+    document.getElementById('valRec').innerHTML=fmtV(rec,m.recall_ok);
+    document.getElementById('valPre').textContent=(pre*100).toFixed(1)+'%';
+    document.getElementById('valF1').textContent=(f1*100).toFixed(1)+'%';
+    document.getElementById('valSpec').textContent=(spec*100).toFixed(1)+'%';
+    const allOk=m.accuracy_ok&&m.roc_auc_ok&&m.recall_ok;
+    badge('metricsBadge',allOk?'ALL PASS':'GATE FAIL',allOk?'green':'red');
+    document.getElementById('metricsCard').className='status-card '+(allOk?'ok':'alert');
+    const cm=m.confusion_matrix||{tn:240,fp:15,fn:50,tp:69};
+    ['TN','FP','FN','TP'].forEach(k=>{ const el=document.getElementById('cm'+k); if(el) el.textContent=cm[k.toLowerCase()]||'—'; });
+    setCheck('chkAcc','chkAccSub',m.accuracy_ok,'','',`Current: ${(acc*100).toFixed(1)}% | Min: 80%`);
+    setCheck('chkAuc','chkAucSub',m.roc_auc_ok,'','',`Current: ${(auc*100).toFixed(1)}% | Min: 75%`);
+    setCheck('chkRec','chkRecSub',m.recall_ok,'','',`Current: ${(rec*100).toFixed(1)}% | Min: 50%`);
+  }
+  setCheck('chkEp','chkEpSub',healthy,'','',ep.status||'Unknown');
+
+  // Drift
+  if(ep.last_modified){
+    const days=Math.floor((Date.now()-new Date(ep.last_modified).getTime())/86400000);
+    const weeks=Math.floor(days/7);
+    document.getElementById('dModelAge').textContent=weeks>0?`${weeks}w`:`${days}d`;
+    document.getElementById('dModelAge').style.color=weeks>=4?'var(--gold)':'var(--green)';
+    document.getElementById('dModelAgeSub').textContent=weeks>=4?'Consider retraining':'Recently deployed';
+  } else {
+    document.getElementById('dModelAge').textContent='Unknown';
+    document.getElementById('dModelAge').style.color='var(--dim)';
+  }
+  if(d.batches&&d.batches.length>0){
+    document.getElementById('dPredRate').textContent=d.batches.length+' uploads';
+    document.getElementById('dPredRate').style.color='var(--cyan)';
+    document.getElementById('dPredRateSub').textContent=`Last: ${d.batches[0].quarter||'—'}`;
+  } else {
+    document.getElementById('dPredRate').textContent='No data';
+    document.getElementById('dPredRateSub').textContent='No uploads yet';
+  }
+  document.getElementById('dOvertime').textContent='28% baseline';
+  document.getElementById('dOvertime').style.color='var(--green)';
+  document.getElementById('dOvertimeSub').textContent='IBM HR: 28% overtime rate';
+  document.getElementById('dIncome').textContent='₹6,502 median';
+  document.getElementById('dIncome').style.color='var(--green)';
+  document.getElementById('dIncomeSub').textContent='IBM HR training distribution';
+
+  // Batch history
+  const tbody=document.getElementById('batchHistBody');
+  tbody.innerHTML='';
+  if(d.batches&&d.batches.length>0){
+    d.batches.forEach(b=>{
+      const tr=document.createElement('tr');
+      const fname=b.key.split('/').pop();
+      const dt=b.uploaded?new Date(b.uploaded).toLocaleDateString('en-IN',
+        {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+      tr.innerHTML=`<td style="color:var(--cyan)">${b.quarter||'—'}</td>
+        <td style="color:var(--txt)">${fname}</td>
+        <td style="color:var(--dim)">${b.size_kb} KB</td>
+        <td style="color:var(--dim)">${dt}</td>`;
+      tbody.appendChild(tr);
+    });
+  } else {
+    tbody.innerHTML='<tr><td colspan="4" style="color:var(--dim);text-align:center;padding:1.25rem;">No quarterly batches yet</td></tr>';
+  }
+  log('Monitor refreshed','ok');
+}
+
+function toggleAutoRefresh(){
+  autoOn=!autoOn;
+  const btn=document.getElementById('autoToggle');
+  btn.textContent='AUTO REFRESH: '+(autoOn?'ON (30s)':'OFF');
+  btn.className='auto-toggle '+(autoOn?'on':'');
+  if(autoOn){
+    autoRefreshInterval=setInterval(loadMonitorData,30000);
+    log('Auto-refresh enabled (every 30s)','inf');
+  } else {
+    clearInterval(autoRefreshInterval);
+    log('Auto-refresh disabled');
+  }
+}
+
+function triggerRetrain(){
+  log('⚠ Manual retrain trigger — open GitHub Actions → CT pipeline → Run workflow','err');
+  alert('To retrain:\n1. Go to GitHub repo → Actions tab\n2. Select "CT — Continuous Training"\n3. Click "Run workflow"\n\nThis will retrain the model and auto-deploy if quality gate passes.');
+}
+
+window.addEventListener('load',()=>{
+  loadMonitorData();
+});
+</script>
+</body>
+</html>

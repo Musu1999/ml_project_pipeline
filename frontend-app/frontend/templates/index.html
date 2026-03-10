@@ -9,6 +9,10 @@
 </head>
 <body>
 
+<style>
+#loader{animation:loaderHide 0s 1.2s forwards!important;}
+@keyframes loaderHide{to{opacity:0;visibility:hidden;display:none;pointer-events:none;}}
+</style>
 <div id="loader">
   <div class="lb"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
   <div class="loader-txt">INITIALISING ATTRITIONIQ...</div>
@@ -38,7 +42,7 @@
     <div class="eyebrow">PREDICTIVE WORKFORCE INTELLIGENCE</div>
     <h1>Employee<br><span class="c">Attrition</span><br><span class="r">Detection</span></h1>
     <p class="hero-sub">
-      XGBoost classifier · 1,470 records · 8 features<br>
+      XGBoost classifier · 7,470 records · 8 features<br>
       Live inference via AWS SageMaker ·
       <span class="ep-name">{{ endpoint_name or "endpoint not set" }}</span>
     </p>
@@ -52,13 +56,13 @@
     </div>
     <div class="stat">
       <div class="stat-label">TRAINING SAMPLES</div>
-      <div class="stat-value" style="color:var(--txt)">1,470</div>
+      <div class="stat-value" style="color:var(--txt)">7,470</div>
       <div class="stat-sub">HR ANALYTICS DATASET</div>
     </div>
     <div class="stat">
       <div class="stat-label">ATTRITION RATE</div>
-      <div class="stat-value red">16.1%</div>
-      <div class="stat-sub">237 / 1,470 EMPLOYEES</div>
+      <div class="stat-value red">16.5%</div>
+      <div class="stat-sub">1,233 / 7,470 EMPLOYEES</div>
     </div>
     <div class="stat">
       <div class="stat-label">ROC AUC SCORE</div>
@@ -142,8 +146,8 @@
           <div class="donut-center"><div class="donut-pct" style="color:var(--red)">16%</div><div class="donut-sub">ATTRITION</div></div>
         </div>
         <div class="donut-legend">
-          <div class="donut-legend-item"><div class="legend-dot" style="background:var(--red)"></div>Attrition — 237 (16.1%)</div>
-          <div class="donut-legend-item"><div class="legend-dot" style="background:var(--green)"></div>Retained — 1,233 (83.9%)</div>
+          <div class="donut-legend-item"><div class="legend-dot" style="background:var(--red)"></div>Attrition — 1,233 (16.5%)</div>
+          <div class="donut-legend-item"><div class="legend-dot" style="background:var(--green)"></div>Retained — 6,237 (83.5%)</div>
         </div>
       </div>
       <div class="chart-card">
