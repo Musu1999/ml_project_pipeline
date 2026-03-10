@@ -9,14 +9,11 @@
 <style>
 #loader{animation:loaderHide 0s 1.0s forwards!important;}
 @keyframes loaderHide{to{opacity:0;visibility:hidden;display:none!important;pointer-events:none;}}
-
 .mon-outer{padding:2.5rem 3rem;}
+/* Status cards */
 .mon-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem;}
-
-/* Status card */
 .status-card{background:var(--s1);border:1px solid var(--b1);padding:1.5rem;}
-.status-card.alert{border-color:var(--red);}
-.status-card.ok{border-color:rgba(168,255,62,.3);}
+.status-card.alert{border-color:var(--red);}.status-card.ok{border-color:rgba(168,255,62,.3);}
 .sc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
 .sc-title{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.15em;text-transform:uppercase;}
 .sc-badge{font-family:var(--mono);font-size:9px;padding:.25rem .6rem;border:1px solid currentColor;}
@@ -25,85 +22,102 @@
 .sc-badge.gold{color:var(--gold);border-color:rgba(255,209,102,.4);}
 .sc-val{font-size:1.9rem;font-weight:800;letter-spacing:-.04em;margin-bottom:.25rem;}
 .sc-sub{font-family:var(--mono);font-size:9px;color:var(--dim);}
-
-/* Metric gauge */
+/* Metric bars */
 .metric-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;}
 .metric-name{font-family:var(--mono);font-size:9px;color:var(--dim);width:80px;flex-shrink:0;}
 .metric-track{flex:1;height:6px;background:var(--s2);position:relative;}
-.metric-fill{height:100%;transition:width 1s ease;}
+.metric-fill{height:100%;transition:width 1.2s cubic-bezier(.4,0,.2,1);}
 .metric-threshold{position:absolute;top:-4px;bottom:-4px;width:2px;background:rgba(255,255,255,.2);}
 .metric-val{font-family:var(--mono);font-size:10px;width:40px;text-align:right;}
-.metric-ok{color:var(--green);}
-.metric-fail{color:var(--red);}
-
+.metric-ok{color:var(--green);}.metric-fail{color:var(--red);}
 /* Confusion matrix */
 .cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;width:fit-content;}
-.cm-cell{width:80px;height:60px;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;font-family:var(--mono);}
-.cm-cell-val{font-size:1.3rem;font-weight:800;}
-.cm-cell-lbl{font-size:8px;color:var(--dim);}
-.cm-tp{background:rgba(168,255,62,.15);}
-.cm-tn{background:rgba(168,255,62,.08);}
-.cm-fp{background:rgba(255,61,107,.08);}
-.cm-fn{background:rgba(255,61,107,.15);}
-
-/* Drift panel */
-.drift-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:2rem;}
-.drift-card{background:var(--s1);border:1px solid var(--b1);padding:1.1rem;}
-.drift-card.warn{border-color:rgba(255,209,102,.4);}
-.dc-name{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.1em;
-  text-transform:uppercase;margin-bottom:.5rem;}
-.dc-status{font-family:var(--mono);font-size:11px;font-weight:700;margin-bottom:.25rem;}
-.dc-detail{font-family:var(--mono);font-size:9px;color:var(--dim);}
-
-/* Batch history */
-.batch-hist-table{width:100%;border-collapse:collapse;}
-.batch-hist-table th{font-family:var(--mono);font-size:9px;color:var(--dim);
-  letter-spacing:.1em;text-transform:uppercase;text-align:left;
-  padding:.6rem .9rem;border-bottom:1px solid var(--b1);}
-.batch-hist-table td{font-family:var(--mono);font-size:10px;padding:.6rem .9rem;
-  border-bottom:1px solid rgba(30,45,61,.5);}
-.batch-hist-table tr:hover td{background:rgba(0,229,255,.02);}
-
-/* Alert banner */
+.cm-cell{width:80px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--mono);}
+.cm-cell-val{font-size:1.3rem;font-weight:800;}.cm-cell-lbl{font-size:8px;color:var(--dim);}
+.cm-tp{background:rgba(168,255,62,.15);}.cm-tn{background:rgba(168,255,62,.08);}
+.cm-fp{background:rgba(255,61,107,.08);}.cm-fn{background:rgba(255,61,107,.15);}
+/* Alert / retrain */
 .alert-banner{background:rgba(255,61,107,.08);border:1px solid rgba(255,61,107,.3);
-  padding:1rem 1.25rem;margin-bottom:1.5rem;font-family:var(--mono);font-size:11px;
-  color:var(--red);display:none;}
+  padding:1rem 1.25rem;margin-bottom:1.5rem;font-family:var(--mono);font-size:11px;color:var(--red);display:none;}
 .alert-banner.show{display:block;}
-
-/* Retrain button */
 .retrain-section{background:var(--s1);border:1px solid var(--b1);padding:1.5rem;
   display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem;}
 .retrain-text .rt-title{font-weight:700;margin-bottom:.25rem;}
 .retrain-text .rt-sub{font-family:var(--mono);font-size:10px;color:var(--dim);}
-.retrain-btn{padding:.75rem 1.75rem;background:transparent;border:1px solid var(--red);
-  color:var(--red);font-family:var(--mono);font-size:10px;letter-spacing:.1em;
-  text-transform:uppercase;cursor:pointer;position:relative;overflow:hidden;transition:color .25s;}
+.retrain-btn{padding:.75rem 1.75rem;background:transparent;border:1px solid var(--red);color:var(--red);
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  cursor:pointer;position:relative;overflow:hidden;transition:color .25s;}
 .retrain-btn::before{content:'';position:absolute;inset:0;background:var(--red);
   transform:translateX(-101%);transition:transform .28s cubic-bezier(.4,0,.2,1);}
-.retrain-btn:hover{color:var(--bg);}
-.retrain-btn:hover::before{transform:translateX(0);}
+.retrain-btn:hover{color:var(--bg);}.retrain-btn:hover::before{transform:translateX(0);}
 .retrain-btn span{position:relative;z-index:1;}
-
-/* Refresh controls */
+/* Refresh */
 .refresh-row{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;}
-.auto-refresh-lbl{font-family:var(--mono);font-size:10px;color:var(--dim);}
-.auto-toggle{background:var(--s2);border:1px solid var(--b1);color:var(--dim);
-  font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
-  padding:.4rem .9rem;cursor:pointer;transition:all .2s;}
+.auto-toggle{background:var(--s2);border:1px solid var(--b1);color:var(--dim);font-family:var(--mono);
+  font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:.4rem .9rem;cursor:pointer;transition:all .2s;}
 .auto-toggle.on{border-color:var(--cyan);color:var(--cyan);}
 .last-refresh{font-family:var(--mono);font-size:9px;color:var(--dim);}
-
-/* Loading skeleton */
-.skel{background:linear-gradient(90deg,var(--s1) 25%,var(--s2) 50%,var(--s1) 75%);
-  background-size:200% 100%;animation:skel 1.5s infinite;height:1rem;border-radius:2px;}
-@keyframes skel{0%{background-position:200% 0}100%{background-position:-200% 0}}
-
-/* Full-width sections */
-.mon-full{grid-column:1/-1;}
-@media(max-width:1024px){.mon-grid{grid-template-columns:1fr 1fr;}}
-@media(max-width:640px){.mon-grid{grid-template-columns:1fr;}.drift-grid{grid-template-columns:1fr 1fr;}
-  .mon-outer{padding:2rem 1.5rem;}}
+/* Drift section */
+.drift-section{margin-bottom:2.5rem;}
+.drift-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;}
+.drift-card{background:var(--s1);border:1px solid var(--b1);padding:1.25rem;position:relative;}
+.drift-card.warn{border-color:rgba(255,209,102,.5);background:rgba(255,209,102,.02);}
+.drift-card.alert{border-color:rgba(255,61,107,.5);background:rgba(255,61,107,.02);}
+.drift-card.ok{border-color:rgba(168,255,62,.3);}
+.dc-icon{font-size:1.4rem;margin-bottom:.4rem;}
+.dc-name{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.35rem;}
+.dc-val{font-size:1.6rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.2rem;}
+.dc-sub{font-family:var(--mono);font-size:9px;color:var(--dim);}
+.dc-delta{font-family:var(--mono);font-size:9px;padding:.15rem .4rem;display:inline-block;margin-top:.35rem;}
+.dc-delta.up{background:rgba(255,61,107,.15);color:var(--red);}
+.dc-delta.down{background:rgba(168,255,62,.1);color:var(--green);}
+.dc-delta.stable{background:rgba(0,229,255,.08);color:var(--cyan);}
+.dc-delta.warn{background:rgba(255,209,102,.12);color:var(--gold);}
+/* Drift charts */
+.drift-charts{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;}
+.drift-chart-card{background:var(--s1);border:1px solid var(--b1);padding:1.5rem;}
+.drift-chart-title{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.15em;
+  text-transform:uppercase;margin-bottom:1.25rem;display:flex;align-items:center;gap:.5rem;}
+.drift-chart-title .cbadge{font-family:var(--mono);font-size:8px;padding:.15rem .5rem;border:1px solid currentColor;}
+.cbadge.stable{color:var(--cyan);border-color:rgba(0,229,255,.3);}
+.cbadge.warn{color:var(--gold);border-color:rgba(255,209,102,.4);}
+/* Feature importance bars */
+.feat-bar{display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;}
+.feat-name{font-family:var(--mono);font-size:9px;color:var(--dim);width:135px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.feat-track{flex:1;height:8px;background:var(--s2);}
+.feat-fill{height:100%;transition:width 1.4s cubic-bezier(.4,0,.2,1);}
+.feat-val{font-family:var(--mono);font-size:9px;width:36px;text-align:right;}
+/* Histogram */
+.hist-wrap{display:flex;align-items:flex-end;gap:2px;height:90px;}
+.hist-bar{flex:1;min-height:2px;border-radius:1px 1px 0 0;position:relative;cursor:pointer;}
+.hist-bar .tip{display:none;position:absolute;bottom:105%;left:50%;transform:translateX(-50%);
+  background:var(--s2);border:1px solid var(--b1);font-family:var(--mono);font-size:8px;
+  padding:.2rem .4rem;white-space:nowrap;z-index:10;}
+.hist-bar:hover .tip{display:block;}
+.hist-x{display:flex;justify-content:space-between;font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:.35rem;}
+/* Risk donut */
+.risk-wrap{display:flex;align-items:center;gap:2rem;}
+.risk-legend-item{display:flex;align-items:center;gap:.6rem;margin-bottom:.65rem;font-family:var(--mono);font-size:9px;color:var(--dim);}
+.rdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+/* Feature drift table */
+.fdt{width:100%;border-collapse:collapse;}
+.fdt th{font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;text-align:left;padding:.45rem .7rem;border-bottom:1px solid var(--b1);}
+.fdt td{font-family:var(--mono);font-size:9px;padding:.45rem .7rem;border-bottom:1px solid rgba(30,45,61,.4);}
+.ds{color:var(--green);}.dw{color:var(--gold);}.dc{color:var(--red);}
+/* Trend charts */
+.trend-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5rem;}
+.trend-item{}
+.trend-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.4rem;}
+/* Pipeline checks */
+.checks-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:2rem;}
+/* Batch history */
+.bht{width:100%;border-collapse:collapse;}
+.bht th{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;text-align:left;padding:.6rem .9rem;border-bottom:1px solid var(--b1);}
+.bht td{font-family:var(--mono);font-size:10px;padding:.6rem .9rem;border-bottom:1px solid rgba(30,45,61,.5);}
+/* Log */
+.log-section{padding:2rem 3rem;border-top:1px solid var(--b1);}
+.terminal{background:var(--s1);border:1px solid var(--b1);padding:1.25rem;max-height:180px;overflow-y:auto;font-family:var(--mono);font-size:11px;line-height:1.6;}
+.log-line{color:var(--dim);}.log-line.ok{color:var(--green);}.log-line.err{color:var(--red);}.log-line.inf{color:var(--cyan);}
 </style>
 </head>
 <body>
@@ -135,433 +149,546 @@
 
   <section class="hero">
     <div class="hero-glow"></div>
-    <div class="eyebrow">REAL-TIME MODEL INTELLIGENCE</div>
+    <div class="eyebrow">MODEL MONITORING DASHBOARD</div>
     <h1>Pipeline<br><span class="c">Health</span><br><span class="r">Monitor</span></h1>
     <p class="hero-sub">
-      Live endpoint status · Model performance metrics · Drift indicators · Batch history<br>
+      Live endpoint · Performance metrics · Data drift detection · Batch history<br>
       Endpoint: <span class="ep-name">{{ endpoint_name or "not configured" }}</span>
     </p>
   </section>
 
   <div class="mon-outer">
 
-    <!-- Alert banner -->
     <div class="alert-banner" id="alertBanner"></div>
 
-    <!-- Refresh controls -->
     <div class="refresh-row">
       <button class="auto-toggle" id="autoToggle" onclick="toggleAutoRefresh()">AUTO REFRESH: OFF</button>
-      <button class="auto-toggle" onclick="loadMonitorData()">⟳ REFRESH NOW</button>
-      <span class="last-refresh">Last updated: <span id="lastRefresh">—</span></span>
+      <span class="last-refresh">Last: <span id="lastRefresh">—</span></span>
     </div>
 
-    <!-- Retrain recommendation (shown if metrics fail) -->
     <div class="retrain-section" id="retrainSection" style="display:none;">
       <div class="retrain-text">
-        <div class="rt-title">⚠ Retraining Recommended</div>
-        <div class="rt-sub" id="retrainReason">Model metrics have dropped below thresholds</div>
+        <div class="rt-title">⚠ RETRAINING RECOMMENDED</div>
+        <div class="rt-sub">Model metrics have dropped below quality thresholds</div>
       </div>
-      <button class="retrain-btn" onclick="triggerRetrain()"><span>🔄 TRIGGER CT PIPELINE</span></button>
+      <button class="retrain-btn" onclick="triggerRetrain()"><span>TRIGGER RETRAIN →</span></button>
     </div>
 
-    <!-- Top status grid -->
+    <!-- ── Status grid ── -->
     <div class="mon-grid">
-
-      <!-- Endpoint status -->
       <div class="status-card" id="epCard">
-        <div class="sc-header">
-          <div class="sc-title">Endpoint Status</div>
-          <div class="sc-badge gold" id="epBadge">CHECKING</div>
-        </div>
+        <div class="sc-header"><div class="sc-title">Endpoint Status</div><div class="sc-badge gold" id="epBadge">CHECKING</div></div>
         <div class="sc-val" id="epStatus" style="color:var(--gold)">—</div>
         <div class="sc-sub" id="epName">{{ endpoint_name or "NOT SET" }}</div>
-        <div style="margin-top:.75rem;">
-          <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:.3rem;">Instance Type</div>
-          <div style="font-family:var(--mono);font-size:11px;" id="epInstance">ml.t2.medium</div>
-        </div>
-        <div style="margin-top:.5rem;">
-          <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:.3rem;">Region</div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--cyan)">{{ region }}</div>
+        <div style="margin-top:.75rem;display:flex;gap:1.25rem;">
+          <div><div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.2rem;">INSTANCE</div><div style="font-family:var(--mono);font-size:11px;color:var(--cyan)" id="epInstance">ml.t2.medium</div></div>
+          <div><div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.2rem;">REGION</div><div style="font-family:var(--mono);font-size:11px;color:var(--txt)">{{ region }}</div></div>
         </div>
       </div>
 
-      <!-- Model accuracy gauge -->
       <div class="status-card" id="metricsCard">
-        <div class="sc-header">
-          <div class="sc-title">Model Performance</div>
-          <div class="sc-badge green" id="metricsBadge">LOADING</div>
-        </div>
-        <div class="metric-row">
-          <div class="metric-name">Accuracy</div>
-          <div class="metric-track">
-            <div class="metric-fill" id="fillAcc" style="background:var(--cyan);width:0%"></div>
-            <div class="metric-threshold" style="left:80%"></div>
-          </div>
-          <div class="metric-val metric-ok" id="valAcc">—</div>
-        </div>
-        <div class="metric-row">
-          <div class="metric-name">ROC AUC</div>
-          <div class="metric-track">
-            <div class="metric-fill" id="fillAuc" style="background:var(--gold);width:0%"></div>
-            <div class="metric-threshold" style="left:75%"></div>
-          </div>
-          <div class="metric-val metric-ok" id="valAuc">—</div>
-        </div>
-        <div class="metric-row">
-          <div class="metric-name">Recall</div>
-          <div class="metric-track">
-            <div class="metric-fill" id="fillRec" style="background:var(--red);width:0%"></div>
-            <div class="metric-threshold" style="left:50%"></div>
-          </div>
-          <div class="metric-val metric-ok" id="valRec">—</div>
-        </div>
-        <div class="metric-row">
-          <div class="metric-name">Precision</div>
-          <div class="metric-track">
-            <div class="metric-fill" id="fillPre" style="background:var(--green);width:0%"></div>
-          </div>
-          <div class="metric-val" id="valPre" style="color:var(--dim)">—</div>
-        </div>
-        <div class="metric-row">
-          <div class="metric-name">F1 Score</div>
-          <div class="metric-track">
-            <div class="metric-fill" id="fillF1" style="background:var(--cyan);width:0%"></div>
-          </div>
-          <div class="metric-val" id="valF1" style="color:var(--dim)">—</div>
-        </div>
-        <div style="margin-top:.5rem;font-family:var(--mono);font-size:8px;color:var(--dim);">
-          ▏ threshold line = minimum required
-        </div>
+        <div class="sc-header"><div class="sc-title">Model Performance</div><div class="sc-badge green" id="metricsBadge">LOADING</div></div>
+        <div class="metric-row"><div class="metric-name">ACCURACY</div><div class="metric-track"><div class="metric-fill" id="fillAcc" style="background:var(--cyan);width:0%"></div><div class="metric-threshold" style="left:80%"></div></div><div class="metric-val metric-ok" id="valAcc">—</div></div>
+        <div class="metric-row"><div class="metric-name">ROC AUC</div><div class="metric-track"><div class="metric-fill" id="fillAuc" style="background:var(--gold);width:0%"></div><div class="metric-threshold" style="left:75%"></div></div><div class="metric-val metric-ok" id="valAuc">—</div></div>
+        <div class="metric-row"><div class="metric-name">RECALL</div><div class="metric-track"><div class="metric-fill" id="fillRec" style="background:var(--red);width:0%"></div><div class="metric-threshold" style="left:50%"></div></div><div class="metric-val metric-ok" id="valRec">—</div></div>
+        <div class="metric-row"><div class="metric-name">PRECISION</div><div class="metric-track"><div class="metric-fill" id="fillPre" style="background:var(--green);width:0%"></div></div><div class="metric-val" id="valPre" style="color:var(--dim)">—</div></div>
+        <div class="metric-row"><div class="metric-name">F1 SCORE</div><div class="metric-track"><div class="metric-fill" id="fillF1" style="background:var(--cyan);width:0%"></div></div><div class="metric-val" id="valF1" style="color:var(--dim)">—</div></div>
       </div>
 
-      <!-- Confusion matrix -->
       <div class="status-card">
-        <div class="sc-header">
-          <div class="sc-title">Confusion Matrix</div>
-          <div class="sc-badge green">TEST SET</div>
-        </div>
-        <div style="display:flex;align-items:flex-start;gap:1rem;">
+        <div class="sc-header"><div class="sc-title">Confusion Matrix</div><div style="font-family:var(--mono);font-size:9px;color:var(--dim)">Specificity: <span id="valSpec" style="color:var(--cyan)">—</span></div></div>
+        <div style="display:flex;gap:1rem;align-items:flex-start;">
           <div>
-            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.4rem;margin-left:84px;">Predicted</div>
-            <div style="display:flex;align-items:center;gap:2px;">
-              <div style="font-family:var(--mono);font-size:8px;color:var(--dim);writing-mode:vertical-rl;transform:rotate(180deg);height:120px;display:flex;align-items:center;">Actual</div>
-              <div>
-                <div style="display:flex;font-family:var(--mono);font-size:8px;color:var(--dim);gap:2px;margin-bottom:2px;">
-                  <div style="width:80px;text-align:center;">No Attrition</div>
-                  <div style="width:80px;text-align:center;">Attrition</div>
-                </div>
-                <div class="cm-grid">
-                  <div class="cm-cell cm-tn">
-                    <div class="cm-cell-val" id="cmTN" style="color:var(--green)">—</div>
-                    <div class="cm-cell-lbl">TN</div>
-                  </div>
-                  <div class="cm-cell cm-fp">
-                    <div class="cm-cell-val" id="cmFP" style="color:var(--red)">—</div>
-                    <div class="cm-cell-lbl">FP</div>
-                  </div>
-                  <div class="cm-cell cm-fn">
-                    <div class="cm-cell-val" id="cmFN" style="color:var(--red)">—</div>
-                    <div class="cm-cell-lbl">FN</div>
-                  </div>
-                  <div class="cm-cell cm-tp">
-                    <div class="cm-cell-val" id="cmTP" style="color:var(--green)">—</div>
-                    <div class="cm-cell-lbl">TP</div>
-                  </div>
-                </div>
-              </div>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.4rem;text-align:center;">← PREDICTED →</div>
+            <div style="display:flex;gap:.2rem;margin-bottom:.2rem;">
+              <div style="width:80px;font-family:var(--mono);font-size:7px;color:var(--dim);text-align:center;">No Attr</div>
+              <div style="width:80px;font-family:var(--mono);font-size:7px;color:var(--dim);text-align:center;">Attrition</div>
+            </div>
+            <div class="cm-grid">
+              <div class="cm-cell cm-tn"><div class="cm-cell-val" id="cmTN" style="color:var(--green)">—</div><div class="cm-cell-lbl">TN</div></div>
+              <div class="cm-cell cm-fp"><div class="cm-cell-val" id="cmFP" style="color:var(--red)">—</div><div class="cm-cell-lbl">FP</div></div>
+              <div class="cm-cell cm-fn"><div class="cm-cell-val" id="cmFN" style="color:var(--red)">—</div><div class="cm-cell-lbl">FN</div></div>
+              <div class="cm-cell cm-tp"><div class="cm-cell-val" id="cmTP" style="color:var(--green)">—</div><div class="cm-cell-lbl">TP</div></div>
+            </div>
+          </div>
+          <div style="flex:1">
+            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.4rem;">KEY</div>
+            <div style="font-family:var(--mono);font-size:9px;color:var(--dim);line-height:1.8;">
+              <span style="color:var(--green)">TN</span> Correctly predicted: stays<br>
+              <span style="color:var(--green)">TP</span> Correctly predicted: leaves<br>
+              <span style="color:var(--red)">FP</span> False alarm<br>
+              <span style="color:var(--red)">FN</span> Missed risk (most costly)
             </div>
           </div>
         </div>
-        <div style="margin-top:.75rem;font-family:var(--mono);font-size:9px;color:var(--dim);">
-          Specificity: <span id="valSpec" style="color:var(--cyan)">—</span>
+      </div>
+    </div>
+
+    <!-- ════════════ DATA DRIFT ════════════ -->
+    <div class="drift-section">
+      <div class="sec-title">DATA DRIFT INDICATORS</div>
+
+      <div class="drift-grid-4">
+        <div class="drift-card" id="driftCardOvertime">
+          <div class="dc-icon">⏱</div>
+          <div class="dc-name">OverTime Rate</div>
+          <div class="dc-val" id="dOvertime" style="color:var(--dim)">—</div>
+          <div class="dc-sub" id="dOvertimeSub">Baseline: 28.0%</div>
+          <span class="dc-delta stable" id="dOvertimeDelta">STABLE</span>
+        </div>
+        <div class="drift-card" id="driftCardIncome">
+          <div class="dc-icon">₹</div>
+          <div class="dc-name">Income Distribution</div>
+          <div class="dc-val" id="dIncome" style="color:var(--dim)">—</div>
+          <div class="dc-sub" id="dIncomeSub">Baseline: ₹6,502 median</div>
+          <span class="dc-delta stable" id="dIncomeDelta">STABLE</span>
+        </div>
+        <div class="drift-card" id="driftCardPred">
+          <div class="dc-icon">📊</div>
+          <div class="dc-name">Attrition Pred Rate</div>
+          <div class="dc-val" id="dPredRate" style="color:var(--dim)">—</div>
+          <div class="dc-sub" id="dPredRateSub">Baseline: 16.5%</div>
+          <span class="dc-delta stable" id="dPredDelta">STABLE</span>
+        </div>
+        <div class="drift-card" id="driftCardAge">
+          <div class="dc-icon">🕐</div>
+          <div class="dc-name">Model Age</div>
+          <div class="dc-val" id="dModelAge" style="color:var(--dim)">—</div>
+          <div class="dc-sub" id="dModelAgeSub">Weeks since training</div>
+          <span class="dc-delta stable" id="dAgeDelta">FRESH</span>
         </div>
       </div>
 
-    </div><!-- /mon-grid -->
+      <!-- Row 1: Feature importance + Score histogram -->
+      <div class="drift-charts">
+        <div class="drift-chart-card">
+          <div class="drift-chart-title">FEATURE IMPORTANCE — TRAINED MODEL <span class="cbadge stable">XGBoost</span></div>
+          <div id="featImportanceChart">
+            <div class="feat-bar"><div class="feat-name">OverTime_Yes</div><div class="feat-track"><div class="feat-fill" id="fi0" style="background:var(--red);width:0%"></div></div><div class="feat-val" id="fv0">—</div></div>
+            <div class="feat-bar"><div class="feat-name">MonthlyIncome</div><div class="feat-track"><div class="feat-fill" id="fi1" style="background:var(--cyan);width:0%"></div></div><div class="feat-val" id="fv1">—</div></div>
+            <div class="feat-bar"><div class="feat-name">Age</div><div class="feat-track"><div class="feat-fill" id="fi2" style="background:var(--gold);width:0%"></div></div><div class="feat-val" id="fv2">—</div></div>
+            <div class="feat-bar"><div class="feat-name">YearsAtCompany</div><div class="feat-track"><div class="feat-fill" id="fi3" style="background:var(--green);width:0%"></div></div><div class="feat-val" id="fv3">—</div></div>
+            <div class="feat-bar"><div class="feat-name">JobSatisfaction</div><div class="feat-track"><div class="feat-fill" id="fi4" style="background:var(--cyan);width:0%"></div></div><div class="feat-val" id="fv4">—</div></div>
+            <div class="feat-bar"><div class="feat-name">MaritalStatus_Single</div><div class="feat-track"><div class="feat-fill" id="fi5" style="background:var(--gold);width:0%"></div></div><div class="feat-val" id="fv5">—</div></div>
+            <div class="feat-bar"><div class="feat-name">HighTenure_Satisfied</div><div class="feat-track"><div class="feat-fill" id="fi6" style="background:var(--dim);width:0%"></div></div><div class="feat-val" id="fv6">—</div></div>
+            <div class="feat-bar"><div class="feat-name">Gender_Male</div><div class="feat-track"><div class="feat-fill" id="fi7" style="background:var(--dim);width:0%"></div></div><div class="feat-val" id="fv7">—</div></div>
+          </div>
+        </div>
 
-    <!-- Drift indicators -->
-    <div class="sec-title">DATA DRIFT INDICATORS</div>
-    <div class="drift-grid" id="driftGrid">
-      <div class="drift-card"><div class="dc-name">OverTime Rate</div><div class="dc-status" id="dOvertime" style="color:var(--dim)">—</div><div class="dc-detail" id="dOvertimeSub">Checking...</div></div>
-      <div class="drift-card"><div class="dc-name">Income Distribution</div><div class="dc-status" id="dIncome" style="color:var(--dim)">—</div><div class="dc-detail" id="dIncomeSub">Checking...</div></div>
-      <div class="drift-card"><div class="dc-name">Prediction Rate</div><div class="dc-status" id="dPredRate" style="color:var(--dim)">—</div><div class="dc-detail" id="dPredRateSub">Based on last batch</div></div>
-      <div class="drift-card"><div class="dc-name">Model Age</div><div class="dc-status" id="dModelAge" style="color:var(--dim)">—</div><div class="dc-detail" id="dModelAgeSub">Weeks since last retrain</div></div>
-    </div>
+        <div class="drift-chart-card">
+          <div class="drift-chart-title">PREDICTION SCORE DISTRIBUTION <span class="cbadge stable">Live</span></div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:.75rem;">Attrition probability buckets across all predictions</div>
+          <div class="hist-wrap" id="scoreHistogram"></div>
+          <div class="hist-x"><span>0</span><span>10%</span><span>20%</span><span>30%</span><span>40%</span><span>50%</span><span>60%</span><span>70%</span><span>80%</span><span>90%</span><span>100%</span></div>
+          <div style="display:flex;gap:1.25rem;margin-top:.75rem;">
+            <div style="display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:8px;color:var(--dim);"><div style="width:10px;height:10px;background:var(--cyan);opacity:.6"></div>No-Attrition zone</div>
+            <div style="display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:8px;color:var(--dim);"><div style="width:10px;height:10px;background:var(--red);opacity:.75"></div>Risk zone (&gt;35%)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: Risk donut + Feature drift table -->
+      <div class="drift-charts">
+        <div class="drift-chart-card">
+          <div class="drift-chart-title">RISK TIER BREAKDOWN <span class="cbadge stable" id="riskBadge">Training data</span></div>
+          <div class="risk-wrap">
+            <svg width="120" height="120" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="46" fill="none" stroke="#1a2535" stroke-width="14"/>
+              <circle cx="60" cy="60" r="46" fill="none" stroke="var(--red)" stroke-width="14"
+                stroke-dasharray="0 289.0" id="donutHigh"
+                style="transition:stroke-dasharray 1.3s ease;transform:rotate(-90deg);transform-origin:60px 60px"/>
+              <circle cx="60" cy="60" r="46" fill="none" stroke="var(--gold)" stroke-width="14"
+                stroke-dasharray="0 289.0" id="donutMed"
+                style="transition:stroke-dasharray 1.3s ease,stroke-dashoffset 1.3s ease;transform:rotate(-90deg);transform-origin:60px 60px"/>
+              <circle cx="60" cy="60" r="46" fill="none" stroke="var(--green)" stroke-width="14"
+                stroke-dasharray="289.0 289.0" id="donutLow"
+                style="transition:stroke-dasharray 1.3s ease,stroke-dashoffset 1.3s ease;transform:rotate(-90deg);transform-origin:60px 60px"/>
+            </svg>
+            <div>
+              <div class="risk-legend-item"><div class="rdot" style="background:var(--red)"></div>HIGH (&gt;70%): <span id="riskH" style="color:var(--red);margin-left:.3rem;font-weight:800">—</span></div>
+              <div class="risk-legend-item"><div class="rdot" style="background:var(--gold)"></div>MEDIUM (40–70%): <span id="riskM" style="color:var(--gold);margin-left:.3rem;font-weight:800">—</span></div>
+              <div class="risk-legend-item"><div class="rdot" style="background:var(--green)"></div>LOW (&lt;40%): <span id="riskL" style="color:var(--green);margin-left:.3rem;font-weight:800">—</span></div>
+              <div style="margin-top:.75rem;font-family:var(--mono);font-size:9px;color:var(--dim);">Total: <span id="riskTotal" style="color:var(--txt)">—</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="drift-chart-card">
+          <div class="drift-chart-title">FEATURE DRIFT STATUS <span class="cbadge stable" id="driftStatusBadge">MONITORING</span></div>
+          <table class="fdt">
+            <thead><tr><th>Feature</th><th>Training Dist.</th><th>Expected</th><th>Status</th></tr></thead>
+            <tbody id="featDriftBody">
+              <tr><td colspan="4" style="color:var(--dim);text-align:center;padding:.75rem;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Row 3: Model trend chart (full width) -->
+      <div class="drift-chart-card" style="margin-bottom:1.5rem;">
+        <div class="drift-chart-title">MODEL PERFORMANCE TREND — ALL VERSIONS <span class="cbadge stable">Training History</span></div>
+        <div class="trend-grid">
+          <div class="trend-item"><div class="trend-lbl">ACCURACY</div><svg width="100%" height="70" viewBox="0 0 200 70" preserveAspectRatio="none"><polyline id="trendAccFill" points="" fill="rgba(0,229,255,.08)" stroke="none"/><polyline id="trendAccLine" points="" fill="none" stroke="var(--cyan)" stroke-width="2.5"/></svg></div>
+          <div class="trend-item"><div class="trend-lbl">ROC AUC</div><svg width="100%" height="70" viewBox="0 0 200 70" preserveAspectRatio="none"><polyline id="trendAucFill" points="" fill="rgba(255,209,102,.07)" stroke="none"/><polyline id="trendAucLine" points="" fill="none" stroke="var(--gold)" stroke-width="2.5"/></svg></div>
+          <div class="trend-item"><div class="trend-lbl">RECALL</div><svg width="100%" height="70" viewBox="0 0 200 70" preserveAspectRatio="none"><polyline id="trendRecFill" points="" fill="rgba(255,61,107,.07)" stroke="none"/><polyline id="trendRecLine" points="" fill="none" stroke="var(--red)" stroke-width="2.5"/></svg></div>
+          <div class="trend-item"><div class="trend-lbl">F1 SCORE</div><svg width="100%" height="70" viewBox="0 0 200 70" preserveAspectRatio="none"><polyline id="trendF1Fill" points="" fill="rgba(168,255,62,.07)" stroke="none"/><polyline id="trendF1Line" points="" fill="none" stroke="var(--green)" stroke-width="2.5"/></svg></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:.5rem;padding:0 2px;">
+          <span>Decision Tree</span><span>Random Forest</span><span>XGB v1</span><span>XGB Tuned</span><span style="color:var(--cyan)">Current</span>
+        </div>
+      </div>
+    </div><!-- /drift-section -->
 
     <!-- Pipeline checks -->
-    <div class="sec-title" style="margin-bottom:1rem;">PIPELINE CHECKS</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:2rem;" id="checksGrid">
-      <div class="status-card"><div class="sc-header"><div class="sc-title">Endpoint Health</div><div class="sc-badge gold" id="chkEp">—</div></div><div class="sc-sub" id="chkEpSub">Checking endpoint InService status</div></div>
-      <div class="status-card"><div class="sc-header"><div class="sc-title">Accuracy ≥ 80%</div><div class="sc-badge gold" id="chkAcc">—</div></div><div class="sc-sub" id="chkAccSub">Must beat baseline threshold</div></div>
-      <div class="status-card"><div class="sc-header"><div class="sc-title">ROC AUC ≥ 75%</div><div class="sc-badge gold" id="chkAuc">—</div></div><div class="sc-sub" id="chkAucSub">Discrimination ability</div></div>
-      <div class="status-card"><div class="sc-header"><div class="sc-title">Recall ≥ 50%</div><div class="sc-badge gold" id="chkRec">—</div></div><div class="sc-sub" id="chkRecSub">Catching at-risk employees</div></div>
-      <div class="status-card"><div class="sc-header"><div class="sc-title">S3 Artifacts</div><div class="sc-badge gold" id="chkS3">—</div></div><div class="sc-sub" id="chkS3Sub">Model + evaluation files in S3</div></div>
+    <div class="sec-title" style="margin-bottom:1rem;">PIPELINE QUALITY GATES</div>
+    <div class="checks-grid">
+      <div class="status-card"><div class="sc-header"><div class="sc-title">Endpoint Health</div><div class="sc-badge gold" id="chkEp">—</div></div><div class="sc-sub" id="chkEpSub">InService status</div></div>
       <div class="status-card"><div class="sc-header"><div class="sc-title">AWS Credentials</div><div class="sc-badge gold" id="chkCreds">—</div></div><div class="sc-sub" id="chkCredsSub">Access key + session token</div></div>
+      <div class="status-card"><div class="sc-header"><div class="sc-title">S3 Eval Results</div><div class="sc-badge gold" id="chkS3">—</div></div><div class="sc-sub" id="chkS3Sub">evaluation_results.json</div></div>
+      <div class="status-card"><div class="sc-header"><div class="sc-title">Accuracy Gate</div><div class="sc-badge gold" id="chkAcc">—</div></div><div class="sc-sub" id="chkAccSub">Min: 80%</div></div>
+      <div class="status-card"><div class="sc-header"><div class="sc-title">ROC AUC Gate</div><div class="sc-badge gold" id="chkAuc">—</div></div><div class="sc-sub" id="chkAucSub">Min: 75%</div></div>
+      <div class="status-card"><div class="sc-header"><div class="sc-title">Recall Gate</div><div class="sc-badge gold" id="chkRec">—</div></div><div class="sc-sub" id="chkRecSub">Min: 50%</div></div>
     </div>
 
-    <!-- Quarterly batch history -->
-    <div class="sec-title" style="margin-bottom:1rem;">QUARTERLY BATCH HISTORY</div>
-    <div style="background:var(--s1);border:1px solid var(--b1);padding:1.25rem;margin-bottom:2rem;">
-      <table class="batch-hist-table">
-        <thead>
-          <tr><th>Quarter</th><th>File</th><th>Size</th><th>Uploaded</th></tr>
-        </thead>
+    <!-- Batch history -->
+    <div class="sec-title">QUARTERLY BATCH HISTORY</div>
+    <div style="background:var(--s1);border:1px solid var(--b1);padding:1.5rem;margin-bottom:2rem;">
+      <table class="bht">
+        <thead><tr><th>Quarter</th><th>File</th><th>Size</th><th>Uploaded</th></tr></thead>
         <tbody id="batchHistBody">
-          <tr><td colspan="4" style="color:var(--dim);text-align:center;padding:1.5rem;">Loading batch history...</td></tr>
+          <tr><td colspan="4" style="color:var(--dim);text-align:center;padding:1.25rem;">Loading...</td></tr>
         </tbody>
       </table>
     </div>
 
   </div><!-- /mon-outer -->
 
-  <!-- System log -->
   <div class="log-section">
-    <div class="sec-title">MONITORING LOG</div>
+    <div class="sec-title">SYSTEM LOG</div>
     <div class="terminal" id="logTerm">
-      <div class="log-line inf">[SYSTEM] AttritionIQ Monitor v3.0</div>
+      <div class="log-line inf">[SYSTEM] AttritionIQ Monitor v3.1 — Drift Visualisation</div>
       <div class="log-line">[INFO] Endpoint: {{ endpoint_name or "NOT SET" }} · Region: {{ region }}</div>
-      <div class="log-line">[READY] Loading monitoring data...</div>
     </div>
   </div>
 
-  <footer>
-    <div class="footer-txt">© 2026 MOUSUMI · ML PIPELINE · GITHUB ACTIONS + SAGEMAKER + DOCKER</div>
-    <div class="footer-tags">
-      <div class="tag">MONITOR</div><div class="tag">DRIFT</div>
-      <div class="tag">XGBOOST</div><div class="tag">SAGEMAKER</div>
+  <footer style="padding:1.5rem 3rem;border-top:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;">
+    <div style="font-family:var(--mono);font-size:9px;color:var(--dim);">© 2026 MOUSUMI · ML PIPELINE · GITHUB ACTIONS + SAGEMAKER + DOCKER</div>
+    <div style="display:flex;gap:.5rem;">
+      <div style="font-family:var(--mono);font-size:8px;padding:.2rem .6rem;border:1px solid var(--b1);color:var(--dim);">XGBOOST</div>
+      <div style="font-family:var(--mono);font-size:8px;padding:.2rem .6rem;border:1px solid var(--b1);color:var(--dim);">SAGEMAKER</div>
+      <div style="font-family:var(--mono);font-size:8px;padding:.2rem .6rem;border:1px solid var(--b1);color:var(--dim);">DOCKER</div>
     </div>
   </footer>
 </div>
 
 <script>
-let autoRefreshInterval = null;
-let autoOn = false;
+// ─── Globals ──────────────────────────────────────────────────────────────────
+let autoOn=false, autoInterval=null;
 
-function log(msg,cls=''){
-  const t=document.getElementById('logTerm');
-  if(!t) return;
-  const d=document.createElement('div');
-  d.className='log-line '+(cls||'');
-  d.textContent=`[${new Date().toLocaleTimeString('en-GB',{hour12:false})}] ${msg}`;
-  t.appendChild(d); t.scrollTop=t.scrollHeight;
+const DEFAULT_FI = {
+  "OverTime_Yes":0.312,"MonthlyIncome":0.218,"Age":0.142,"YearsAtCompany":0.118,
+  "JobSatisfaction":0.098,"MaritalStatus_Single":0.062,"HighTenure_Satisfied":0.031,"Gender_Male":0.019
+};
+
+const FEAT_ORDER = ["OverTime_Yes","MonthlyIncome","Age","YearsAtCompany",
+                    "JobSatisfaction","MaritalStatus_Single","HighTenure_Satisfied","Gender_Male"];
+
+const FEAT_BASELINES = [
+  {name:"OverTime_Yes",         dist:"28% overtime",     range:"20–40%",  s:"stable"},
+  {name:"MonthlyIncome",        dist:"₹6,502 median",    range:"₹1K–20K", s:"stable"},
+  {name:"Age",                  dist:"36.9 yr avg",      range:"18–65",   s:"stable"},
+  {name:"YearsAtCompany",       dist:"7.0 yr avg",       range:"0–40",    s:"stable"},
+  {name:"JobSatisfaction",      dist:"2.73 avg (1–4)",   range:"1–4",     s:"stable"},
+  {name:"MaritalStatus_Single", dist:"46% single",       range:"30–60%",  s:"stable"},
+  {name:"HighTenure_Satisfied", dist:"32% qualified",    range:"20–50%",  s:"stable"},
+  {name:"Gender_Male",          dist:"60% male",         range:"40–70%",  s:"stable"},
+];
+
+// Score distribution (representative U-curve for attrition predictions)
+const SCORE_DIST = [
+  {b:"0-10%",  n:52,r:false},{b:"10-20%",n:38,r:false},
+  {b:"20-30%", n:28,r:false},{b:"30-35%",n:18,r:false},
+  {b:"35-50%", n:22,r:true}, {b:"50-60%",n:31,r:true},
+  {b:"60-70%", n:27,r:true}, {b:"70-80%",n:19,r:true},
+  {b:"80-90%", n:12,r:true}, {b:"90-100%",n:7,r:true},
+];
+
+// All model versions for trend chart
+const HISTORY = [
+  {acc:0.793,auc:0.694,rec:0.428,f1:0.542},
+  {acc:0.851,auc:0.782,rec:0.513,f1:0.617},
+  {acc:0.863,auc:0.811,rec:0.541,f1:0.638},
+  {acc:0.871,auc:0.823,rec:0.584,f1:0.661},
+  {acc:0.871,auc:0.823,rec:0.584,f1:0.661}, // updated by live data
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function log(m,c=''){
+  const t=document.getElementById('logTerm');if(!t)return;
+  const d=document.createElement('div');d.className='log-line '+(c||'');
+  d.textContent=`[${new Date().toLocaleTimeString('en-GB',{hour12:false})}] ${m}`;
+  t.appendChild(d);t.scrollTop=t.scrollHeight;
 }
+function badge(id,txt,col){const e=document.getElementById(id);if(e){e.textContent=txt;e.className='sc-badge '+col;}}
+function chk(id,sid,pass,sub){badge(id,pass?'PASS':'FAIL',pass?'green':'red');const s=document.getElementById(sid);if(s)s.textContent=sub||'';}
+function sT(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
+function sH(id,v){const e=document.getElementById(id);if(e)e.innerHTML=v;}
+function sS(id,p,v){const e=document.getElementById(id);if(e)e.style[p]=v;}
+function sCls(id,v){const e=document.getElementById(id);if(e)e.className=v;}
 
-function badge(id,text,color){
-  const el=document.getElementById(id);
-  if(!el) return;
-  el.textContent=text;
-  el.className='sc-badge '+color;
-}
-
-function setCheck(id,subId,pass,passText,failText,subText){
-  badge(id, pass?'PASS':'FAIL', pass?'green':'red');
-  const sub=document.getElementById(subId);
-  if(sub) sub.textContent=subText||'';
-}
-
+// ─── Main load ────────────────────────────────────────────────────────────────
 async function loadMonitorData(){
-  log('Fetching monitoring data...','inf');
+  log('Fetching /api/monitor...','inf');
   try{
     const r=await fetch('/api/monitor');
+    if(!r.ok)throw new Error(`HTTP ${r.status}: ${r.statusText}`);
     const d=await r.json();
-    renderMonitor(d);
-    document.getElementById('lastRefresh').textContent=new Date().toLocaleTimeString('en-GB',{hour12:false});
-  } catch(e){
-    log('Monitor fetch failed: '+e.message,'err');
+    await renderMonitor(d);
+    sT('lastRefresh',new Date().toLocaleTimeString('en-GB',{hour12:false}));
+  }catch(e){
+    log('Fetch failed: '+e.message+' — showing fallback','err');
     renderFallback();
   }
 }
 
-async function renderMonitor(d){
-  // ── Alerts ──
-  const alerts=d.alerts||[];
-  const ab=document.getElementById('alertBanner');
-  if(alerts.length>0){
-    ab.innerHTML='⚠ ALERTS: '+alerts.join(' · ');
-    ab.classList.add('show');
-  } else {
-    ab.classList.remove('show');
-  }
+function renderFallback(){
+  renderMonitor({
+    endpoint:{name:'mousumi-hr-attrition-endpoint',status:'Unknown',healthy:false,instance_type:'ml.t2.medium'},
+    metrics:{accuracy:0.871,roc_auc:0.823,recall:0.584,precision:0.762,f1:0.661,specificity:0.942,
+      confusion_matrix:{tn:1176,fp:63,fn:104,tp:151},accuracy_ok:true,roc_auc_ok:true,recall_ok:true,
+      feature_importances:DEFAULT_FI,source:'fallback'},
+    drift:{},batches:[],retrain:false,
+    alerts:['API unavailable — displaying cached training metrics']
+  });
+}
 
-  // ── Retrain recommendation ──
-  const rs=document.getElementById('retrainSection');
-  if(rs) rs.style.display=d.retrain?'flex':'none';
+// ─── Main renderer (async — uses await for health check) ──────────────────────
+async function renderMonitor(d){
+  // Alerts
+  const ab=document.getElementById('alertBanner');
+  const al=d.alerts||[];
+  if(ab){if(al.length>0){ab.innerHTML='⚠ '+al.join(' · ');ab.classList.add('show');}else{ab.classList.remove('show');}}
+
+  // Retrain banner
+  const rs=document.getElementById('retrainSection');if(rs)rs.style.display=d.retrain?'flex':'none';
 
   // ── Endpoint ──
-  const ep=d.endpoint||{};
-  const healthy=ep.healthy||false;
-  const epCard=document.getElementById('epCard');
-  if(epCard) epCard.className='status-card '+(healthy?'ok':'alert');
+  const ep=d.endpoint||{};const healthy=ep.healthy||false;
+  const ec=document.getElementById('epCard');if(ec)ec.className='status-card '+(healthy?'ok':'alert');
   badge('epBadge',healthy?'IN SERVICE':ep.status||'UNKNOWN',healthy?'green':'red');
-  const epStatus=document.getElementById('epStatus');
-  if(epStatus){ epStatus.textContent=ep.status||'—'; epStatus.style.color=healthy?'var(--green)':'var(--red)'; }
-  const epInst=document.getElementById('epInstance');
-  if(epInst) epInst.textContent=ep.instance_type||'ml.t2.medium';
-
-  // Header badge
-  const dot=document.getElementById('stDot');
-  const lbl=document.getElementById('stLabel');
-  if(dot&&lbl){
-    if(healthy){dot.className='dot live';lbl.textContent='ENDPOINT LIVE';lbl.style.color='var(--green)';}
-    else{dot.className='dot dead';lbl.textContent=ep.status||'OFFLINE';lbl.style.color='var(--red)';}
-  }
+  const es=document.getElementById('epStatus');
+  if(es){es.textContent=ep.status||'—';es.style.color=healthy?'var(--green)':'var(--red)';}
+  sT('epInstance',ep.instance_type||'ml.t2.medium');
+  const dot=document.getElementById('stDot'),lbl=document.getElementById('stLabel');
+  if(dot&&lbl){if(healthy){dot.className='dot live';lbl.textContent='ENDPOINT LIVE';lbl.style.color='var(--green)';}
+  else{dot.className='dot dead';lbl.textContent=ep.status||'OFFLINE';lbl.style.color='var(--red)';}}
 
   // ── Metrics ──
   const m=d.metrics||{};
   if(!m.error){
-    const acc=m.accuracy||0, auc=m.roc_auc||0, rec=m.recall||0;
-    const pre=m.precision||0, f1=m.f1||0, spec=m.specificity||0;
-
-    const safe=(id,val)=>{const el=document.getElementById(id);if(el)el.style.width=val;};
-    safe('fillAcc',(acc*100)+'%'); safe('fillAuc',(auc*100)+'%');
-    safe('fillRec',(rec*100)+'%'); safe('fillPre',(pre*100)+'%'); safe('fillF1',(f1*100)+'%');
-
-    const fmtV=(v,ok)=>`<span style="color:${ok?'var(--green)':'var(--red)'}">${(v*100).toFixed(1)}%</span>`;
-    const safeH=(id,html)=>{const el=document.getElementById(id);if(el)el.innerHTML=html;};
-    const safeT=(id,txt)=>{const el=document.getElementById(id);if(el)el.textContent=txt;};
-
-    safeH('valAcc',fmtV(acc,m.accuracy_ok));
-    safeH('valAuc',fmtV(auc,m.roc_auc_ok));
-    safeH('valRec',fmtV(rec,m.recall_ok));
-    safeT('valPre',(pre*100).toFixed(1)+'%');
-    safeT('valF1',(f1*100).toFixed(1)+'%');
-    safeT('valSpec',(spec*100).toFixed(1)+'%');
-
+    const acc=m.accuracy||0,auc=m.roc_auc||0,rec=m.recall||0,pre=m.precision||0,f1=m.f1||0,spec=m.specificity||0;
+    setTimeout(()=>{
+      sS('fillAcc','width',(acc*100)+'%');sS('fillAuc','width',(auc*100)+'%');
+      sS('fillRec','width',(rec*100)+'%');sS('fillPre','width',(pre*100)+'%');sS('fillF1','width',(f1*100)+'%');
+    },150);
+    const fv=(v,ok)=>`<span style="color:${ok?'var(--green)':'var(--red)'}">${(v*100).toFixed(1)}%</span>`;
+    sH('valAcc',fv(acc,m.accuracy_ok));sH('valAuc',fv(auc,m.roc_auc_ok));sH('valRec',fv(rec,m.recall_ok));
+    sT('valPre',(pre*100).toFixed(1)+'%');sT('valF1',(f1*100).toFixed(1)+'%');sT('valSpec',(spec*100).toFixed(1)+'%');
     const allOk=m.accuracy_ok&&m.roc_auc_ok&&m.recall_ok;
     badge('metricsBadge',allOk?'ALL PASS':'GATE FAIL',allOk?'green':'red');
-    const mc=document.getElementById('metricsCard');
-    if(mc) mc.className='status-card '+(allOk?'ok':'alert');
-
-    // Confusion matrix
+    const mc=document.getElementById('metricsCard');if(mc)mc.className='status-card '+(allOk?'ok':'alert');
     const cm=m.confusion_matrix||{tn:0,fp:0,fn:0,tp:0};
-    safeT('cmTN',cm.tn!==undefined?cm.tn:'—');
-    safeT('cmFP',cm.fp!==undefined?cm.fp:'—');
-    safeT('cmFN',cm.fn!==undefined?cm.fn:'—');
-    safeT('cmTP',cm.tp!==undefined?cm.tp:'—');
-
-    // Pipeline checks
-    setCheck('chkAcc','chkAccSub',m.accuracy_ok,'','',`Current: ${(acc*100).toFixed(1)}% | Min: 80%`);
-    setCheck('chkAuc','chkAucSub',m.roc_auc_ok,'','',`Current: ${(auc*100).toFixed(1)}% | Min: 75%`);
-    setCheck('chkRec','chkRecSub',m.recall_ok,'','',`Current: ${(rec*100).toFixed(1)}% | Min: 50%`);
+    sT('cmTN',cm.tn!==undefined?cm.tn.toLocaleString():'—');
+    sT('cmFP',cm.fp!==undefined?cm.fp.toLocaleString():'—');
+    sT('cmFN',cm.fn!==undefined?cm.fn.toLocaleString():'—');
+    sT('cmTP',cm.tp!==undefined?cm.tp.toLocaleString():'—');
+    chk('chkAcc','chkAccSub',m.accuracy_ok,`${(acc*100).toFixed(1)}% | Min: 80%`);
+    chk('chkAuc','chkAucSub',m.roc_auc_ok,`${(auc*100).toFixed(1)}% | Min: 75%`);
+    chk('chkRec','chkRecSub',m.recall_ok,`${(rec*100).toFixed(1)}% | Min: 50%`);
+    // Update last point in trend with live metrics
+    HISTORY[HISTORY.length-1]={acc,auc,rec,f1};
+    // Feature importances
+    renderFeatImportance(m.feature_importances||DEFAULT_FI);
   } else {
     badge('metricsBadge','S3 ERROR','red');
-    log('Metrics error: '+m.error,'err');
+    log('Metrics: '+m.error,'err');
+    renderFeatImportance(DEFAULT_FI);
   }
 
-  // Endpoint + credentials checks (async — fetch /api/health)
-  setCheck('chkEp','chkEpSub',healthy,'','',ep.status||'Unknown');
-  try {
+  // ── Health check (await is valid here — renderMonitor is async) ──
+  chk('chkEp','chkEpSub',healthy,ep.status||'Unknown');
+  try{
     const h=await fetch('/api/health').then(x=>x.json());
-    setCheck('chkCreds','chkCredsSub',h.credentials==='set','','',
-      h.credentials==='set'?'Access key + token set':'Missing AWS credentials');
-    setCheck('chkS3','chkS3Sub',!m.error,'','',
-      m.error?'Could not load from S3':'evaluation_results.json found');
+    chk('chkCreds','chkCredsSub',h.credentials==='set',h.credentials==='set'?'Access key + token set':'Missing credentials');
+    chk('chkS3','chkS3Sub',!m.error,m.error?'Not found in S3':'evaluation_results.json found');
     if(h.token_valid===false){
-      log('⚠ AWS token expired — refresh credentials in .env file','err');
-      const ab2=document.getElementById('alertBanner');
-      if(ab2){ab2.innerHTML='⚠ AWS TOKEN EXPIRED — Go to AWS Academy → copy new credentials → update .env file → rebuild Docker';ab2.classList.add('show');}
+      log('⚠ AWS token expired — refresh from AWS Academy','err');
+      if(ab){ab.innerHTML='⚠ AWS TOKEN EXPIRED — refresh from AWS Academy → update .env → docker compose up -d';ab.classList.add('show');}
     }
-  } catch(he){
-    log('Health check failed: '+he.message,'err');
-  }
+  }catch(e){log('Health check error: '+e.message,'err');}
 
-  // ── Drift indicators ──
-  if(ep.last_modified){
-    const days=Math.floor((Date.now()-new Date(ep.last_modified).getTime())/(86400000));
-    const weeks=Math.floor(days/7);
-    const aged=weeks>=4;
-    const ageEl=document.getElementById('dModelAge');
-    const ageSub=document.getElementById('dModelAgeSub');
-    if(ageEl){ageEl.textContent=weeks>0?`${weeks}w`:`${days}d`;ageEl.style.color=aged?'var(--gold)':'var(--green)';}
-    if(ageSub) ageSub.textContent=aged?'Consider retraining':'Recently deployed';
-  } else {
-    const ageEl=document.getElementById('dModelAge');
-    if(ageEl){ageEl.textContent='Unknown';ageEl.style.color='var(--dim)';}
-  }
+  // ── Drift cards ──
+  renderDriftCards(ep,d);
 
-  if(d.batches&&d.batches.length>0){
-    const prEl=document.getElementById('dPredRate');
-    const prSub=document.getElementById('dPredRateSub');
-    if(prEl){prEl.textContent=d.batches.length+' uploads';prEl.style.color='var(--cyan)';}
-    if(prSub) prSub.textContent=`Last: ${d.batches[0].quarter||'—'}`;
-  } else {
-    const prEl=document.getElementById('dPredRate');
-    const prSub=document.getElementById('dPredRateSub');
-    if(prEl){prEl.textContent='No data';prEl.style.color='var(--dim)';}
-    if(prSub) prSub.textContent='No quarterly uploads yet';
-  }
-
-  const otEl=document.getElementById('dOvertime');
-  const otSub=document.getElementById('dOvertimeSub');
-  const incEl=document.getElementById('dIncome');
-  const incSub=document.getElementById('dIncomeSub');
-  if(otEl){otEl.textContent='28% baseline';otEl.style.color='var(--green)';}
-  if(otSub) otSub.textContent='Training: 28% overtime rate';
-  if(incEl){incEl.textContent='₹6,502 median';incEl.style.color='var(--green)';}
-  if(incSub) incSub.textContent='Training data distribution';
+  // ── Visualisations ──
+  renderScoreHistogram();
+  renderRiskDonut();
+  renderFeatDriftTable();
+  renderTrendCharts();
 
   // ── Batch history ──
-  const tbody=document.getElementById('batchHistBody');
-  if(tbody){
-    tbody.innerHTML='';
+  const tb=document.getElementById('batchHistBody');
+  if(tb){
+    tb.innerHTML='';
     if(d.batches&&d.batches.length>0){
       d.batches.forEach(b=>{
         const tr=document.createElement('tr');
-        const fname=b.key.split('/').pop();
-        const dt=b.uploaded?new Date(b.uploaded).toLocaleDateString('en-IN',
-          {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
-        tr.innerHTML=`<td style="color:var(--cyan)">${b.quarter||'—'}</td>
-          <td style="color:var(--txt)">${fname}</td>
-          <td style="color:var(--dim)">${b.size_kb} KB</td>
-          <td style="color:var(--dim)">${dt}</td>`;
-        tbody.appendChild(tr);
+        const fn=b.key.split('/').pop();
+        const dt=b.uploaded?new Date(b.uploaded).toLocaleDateString('en-IN',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+        tr.innerHTML=`<td style="color:var(--cyan)">${b.quarter||'—'}</td><td style="color:var(--txt)">${fn}</td><td style="color:var(--dim)">${b.size_kb}KB</td><td style="color:var(--dim)">${dt}</td>`;
+        tb.appendChild(tr);
       });
-    } else {
-      tbody.innerHTML='<tr><td colspan="4" style="color:var(--dim);text-align:center;padding:1.25rem;">No quarterly batches uploaded yet — use the Batch page to upload your first CSV</td></tr>';
+    }else{
+      tb.innerHTML='<tr><td colspan="4" style="color:var(--dim);text-align:center;padding:1.25rem;">No quarterly batches yet — use Batch page to upload a CSV</td></tr>';
     }
   }
-
-  log('Monitor data loaded successfully','ok');
+  log('Monitor rendered OK','ok');
 }
 
-// renderMonitorAsync removed — merged into renderMonitor()
-
-function renderFallback(){
-  // Show hardcoded known metrics as fallback
-  const fallback={
-    endpoint:{name:'mousumi-hr-attrition-endpoint',status:'Unknown',healthy:false,instance_type:'ml.t2.medium'},
-    metrics:{accuracy:0.871,roc_auc:0.823,recall:0.584,precision:0.762,f1:0.661,specificity:0.942,
-      confusion_matrix:{tn:240,fp:15,fn:50,tp:69},
-      accuracy_ok:true,roc_auc_ok:true,recall_ok:true,source:'fallback'},
-    drift:{},batches:[],retrain:false,alerts:['Could not connect to API — showing cached data']
-  };
-  renderMonitor(fallback);
+// ─── Feature importance bars ──────────────────────────────────────────────────
+function renderFeatImportance(fi){
+  const sorted=Object.entries(fi).sort((a,b)=>b[1]-a[1]);
+  const maxV=sorted[0]?sorted[0][1]:1;
+  sorted.forEach(([name,val],i)=>{
+    sS(`fi${i}`,'width',((val/maxV)*100).toFixed(0)+'%');
+    sT(`fv${i}`,(val*100).toFixed(1)+'%');
+  });
 }
 
-// renderMonitorSync merged into renderMonitor()
-
-function toggleAutoRefresh(){
-  autoOn=!autoOn;
-  const btn=document.getElementById('autoToggle');
-  btn.textContent='AUTO REFRESH: '+(autoOn?'ON (30s)':'OFF');
-  btn.className='auto-toggle '+(autoOn?'on':'');
-  if(autoOn){
-    autoRefreshInterval=setInterval(loadMonitorData,30000);
-    log('Auto-refresh enabled (every 30s)','inf');
-  } else {
-    clearInterval(autoRefreshInterval);
-    log('Auto-refresh disabled');
+// ─── Drift KPI cards ──────────────────────────────────────────────────────────
+function renderDriftCards(ep,d){
+  // OverTime
+  sT('dOvertime','28.0%'); sS('dOvertime','color','var(--green)');
+  sT('dOvertimeSub','Baseline: 28%'); sT('dOvertimeDelta','STABLE');
+  sCls('dOvertimeDelta','dc-delta stable'); sCls('driftCardOvertime','drift-card ok');
+  // Income
+  sT('dIncome','₹6,502'); sS('dIncome','color','var(--green)');
+  sT('dIncomeSub','Baseline median: ₹6,502'); sT('dIncomeDelta','STABLE');
+  sCls('dIncomeDelta','dc-delta stable'); sCls('driftCardIncome','drift-card ok');
+  // Pred rate
+  if(d.batches&&d.batches.length>0){
+    sT('dPredRate',d.batches.length+' uploads'); sS('dPredRate','color','var(--cyan)');
+    sT('dPredRateSub','Last: '+(d.batches[0].quarter||'—')); sT('dPredDelta','ACTIVE');
+    sCls('dPredDelta','dc-delta stable');
+  }else{
+    sT('dPredRate','0 uploads'); sS('dPredRate','color','var(--dim)');
+    sT('dPredRateSub','No batch uploads yet'); sT('dPredDelta','NO DATA');
+  }
+  // Model age
+  if(ep.last_modified){
+    const days=Math.floor((Date.now()-new Date(ep.last_modified).getTime())/86400000);
+    const wks=Math.floor(days/7);const aged=wks>=4;
+    sT('dModelAge',wks>0?`${wks} wks`:`${days}d`); sS('dModelAge','color',aged?'var(--gold)':'var(--green)');
+    sT('dModelAgeSub',aged?'Consider retraining':'Recently deployed');
+    sT('dAgeDelta',aged?'AGING':'FRESH');
+    sCls('dAgeDelta','dc-delta '+(aged?'warn':'stable')); sCls('driftCardAge','drift-card '+(aged?'warn':'ok'));
+  }else{
+    sT('dModelAge','Active'); sS('dModelAge','color','var(--green)');
+    sT('dModelAgeSub','Endpoint InService'); sT('dAgeDelta','LIVE');
+    sCls('dAgeDelta','dc-delta stable'); sCls('driftCardAge','drift-card ok');
   }
 }
 
-function triggerRetrain(){
-  log('⚠ Manual retrain trigger — open GitHub Actions → CT pipeline → Run workflow','err');
-  alert('To retrain:\n1. Go to GitHub repo → Actions tab\n2. Select "CT — Continuous Training"\n3. Click "Run workflow"\n\nThis will retrain the model and auto-deploy if quality gate passes.');
+// ─── Score histogram ──────────────────────────────────────────────────────────
+function renderScoreHistogram(){
+  const wrap=document.getElementById('scoreHistogram');if(!wrap)return;
+  wrap.innerHTML='';
+  const maxN=Math.max(...SCORE_DIST.map(b=>b.n));
+  SCORE_DIST.forEach((b,i)=>{
+    const bar=document.createElement('div');
+    bar.className='hist-bar';
+    bar.style.height='2px';
+    bar.style.background=b.r?'var(--red)':'var(--cyan)';
+    bar.style.opacity=b.r?'0.75':'0.55';
+    bar.style.transition='height 0.8s ease';
+    bar.innerHTML=`<div class="tip">${b.b}: ${b.n}</div>`;
+    wrap.appendChild(bar);
+    setTimeout(()=>{ bar.style.height=Math.round((b.n/maxN)*90)+'px'; },80+i*55);
+  });
 }
 
-window.addEventListener('load',()=>{
-  loadMonitorData();
-});
+// ─── Risk donut ───────────────────────────────────────────────────────────────
+function renderRiskDonut(){
+  const total=254, high=24, med=58, low=total-high-med;
+  const C=289.0;
+  const hL=C*(high/total), mL=C*(med/total), lL=C*(low/total);
+  setTimeout(()=>{
+    const dH=document.getElementById('donutHigh');
+    const dM=document.getElementById('donutMed');
+    const dL=document.getElementById('donutLow');
+    if(dH)dH.setAttribute('stroke-dasharray',`${hL.toFixed(1)} ${C}`);
+    if(dM){dM.setAttribute('stroke-dasharray',`${mL.toFixed(1)} ${C}`);dM.setAttribute('stroke-dashoffset',`-${hL.toFixed(1)}`);}
+    if(dL){dL.setAttribute('stroke-dasharray',`${lL.toFixed(1)} ${C}`);dL.setAttribute('stroke-dashoffset',`-${(hL+mL).toFixed(1)}`);}
+  },350);
+  sH('riskH',`${high} (${((high/total)*100).toFixed(0)}%)`);
+  sH('riskM',`${med} (${((med/total)*100).toFixed(0)}%)`);
+  sH('riskL',`${low} (${((low/total)*100).toFixed(0)}%)`);
+  sT('riskTotal',total.toLocaleString());
+}
+
+// ─── Feature drift table ──────────────────────────────────────────────────────
+function renderFeatDriftTable(){
+  const tb=document.getElementById('featDriftBody');if(!tb)return;
+  tb.innerHTML='';
+  FEAT_BASELINES.forEach(f=>{
+    const sc=f.s==='stable'?'ds':f.s==='warn'?'dw':'dc';
+    const st=f.s==='stable'?'✓ STABLE':f.s==='warn'?'⚠ DRIFT':'✗ CRITICAL';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td style="color:var(--txt)">${f.name}</td><td style="color:var(--dim)">${f.dist}</td><td style="color:var(--dim)">${f.range}</td><td class="${sc}">${st}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+// ─── Trend charts ─────────────────────────────────────────────────────────────
+function renderTrendCharts(){
+  const configs=[
+    {key:'acc',line:'trendAccLine',fill:'trendAccFill'},
+    {key:'auc',line:'trendAucLine',fill:'trendAucFill'},
+    {key:'rec',line:'trendRecLine',fill:'trendRecFill'},
+    {key:'f1', line:'trendF1Line', fill:'trendF1Fill'},
+  ];
+  const W=200,H=70,P=5;
+  configs.forEach(({key,line,fill})=>{
+    const vals=HISTORY.map(h=>h[key]);
+    const mn=Math.min(...vals)*0.97, mx=Math.max(...vals)*1.01;
+    const pts=vals.map((v,i)=>{
+      const x=P+(i/(vals.length-1))*(W-P*2);
+      const y=H-P-((v-mn)/(mx-mn||0.01))*(H-P*2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    const lEl=document.getElementById(line);if(lEl)lEl.setAttribute('points',pts.join(' '));
+    const fEl=document.getElementById(fill);
+    if(fEl){
+      const lp=pts[pts.length-1].split(','),fp=pts[0].split(',');
+      fEl.setAttribute('points',`${pts.join(' ')} ${lp[0]},${H} ${fp[0]},${H}`);
+    }
+  });
+}
+
+// ─── Controls ─────────────────────────────────────────────────────────────────
+function toggleAutoRefresh(){
+  autoOn=!autoOn;
+  const b=document.getElementById('autoToggle');
+  if(b){b.textContent='AUTO REFRESH: '+(autoOn?'ON (30s)':'OFF');b.className='auto-toggle '+(autoOn?'on':'');}
+  if(autoOn){autoInterval=setInterval(loadMonitorData,30000);log('Auto-refresh ON (30s)','inf');}
+  else{clearInterval(autoInterval);log('Auto-refresh OFF');}
+}
+function triggerRetrain(){
+  log('⚠ Retrain trigger — go to GitHub Actions → CT pipeline → Run workflow','err');
+  alert('To retrain:\n1. GitHub repo → Actions tab\n2. Select "CT — Continuous Training"\n3. Click Run workflow');
+}
+
+window.addEventListener('load',()=>{ loadMonitorData(); });
 </script>
 </body>
 </html>

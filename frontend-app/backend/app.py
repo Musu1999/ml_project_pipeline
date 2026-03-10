@@ -1,6 +1,8 @@
 """
-backend/app.py — Flask entry point (Enhanced v3.0)
-Added: /monitor route
+backend/app.py — Flask entry point (v3.1)
+FIX: renamed page route functions (page_index, page_batch, page_monitor) to avoid
+     endpoint name collision with api Blueprint functions (index, batch, monitor, health).
+     Flask requires unique function names across app + all blueprints.
 """
 import os, logging
 from flask import Flask, render_template
@@ -19,16 +21,17 @@ AWS_REGION    = os.environ.get("AWS_REGION",    "ap-south-1")
 ENDPOINT_NAME = os.environ.get("ENDPOINT_NAME", "")
 
 @app.route("/")
-def index():
+def page_index():
     return render_template("index.html", endpoint_name=ENDPOINT_NAME, region=AWS_REGION)
 
 @app.route("/batch")
-def batch():
+def page_batch():
     return render_template("batch.html", endpoint_name=ENDPOINT_NAME, region=AWS_REGION)
 
 @app.route("/monitor")
-def monitor():
-    return render_template("monitor.html", endpoint_name=ENDPOINT_NAME, region=AWS_REGION)
+def page_monitor():
+    # NOTE: renders monitoring.html (not monitor.html) to avoid template name confusion
+    return render_template("monitoring.html", endpoint_name=ENDPOINT_NAME, region=AWS_REGION)
 
 if __name__ == "__main__":
     print(f"\n  Template : {TEMPLATE_DIR}")
