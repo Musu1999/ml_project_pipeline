@@ -372,7 +372,7 @@ async function loadMonitorData(){
   }
 }
 
-function renderMonitor(d){
+async function renderMonitor(d){
   // ── Alerts ──
   const alerts=d.alerts||[];
   const ab=document.getElementById('alertBanner');
@@ -385,24 +385,26 @@ function renderMonitor(d){
 
   // ── Retrain recommendation ──
   const rs=document.getElementById('retrainSection');
-  rs.style.display=d.retrain?'flex':'none';
+  if(rs) rs.style.display=d.retrain?'flex':'none';
 
   // ── Endpoint ──
   const ep=d.endpoint||{};
   const healthy=ep.healthy||false;
   const epCard=document.getElementById('epCard');
-  epCard.className='status-card '+(healthy?'ok':'alert');
+  if(epCard) epCard.className='status-card '+(healthy?'ok':'alert');
   badge('epBadge',healthy?'IN SERVICE':ep.status||'UNKNOWN',healthy?'green':'red');
   const epStatus=document.getElementById('epStatus');
-  epStatus.textContent=ep.status||'—';
-  epStatus.style.color=healthy?'var(--green)':'var(--red)';
-  document.getElementById('epInstance').textContent=ep.instance_type||'ml.t2.medium';
+  if(epStatus){ epStatus.textContent=ep.status||'—'; epStatus.style.color=healthy?'var(--green)':'var(--red)'; }
+  const epInst=document.getElementById('epInstance');
+  if(epInst) epInst.textContent=ep.instance_type||'ml.t2.medium';
 
-  // Update header badge
+  // Header badge
   const dot=document.getElementById('stDot');
   const lbl=document.getElementById('stLabel');
-  if(healthy){dot.className='dot live';lbl.textContent='ENDPOINT LIVE';lbl.style.color='var(--green)';}
-  else{dot.className='dot dead';lbl.textContent=ep.status||'OFFLINE';lbl.style.color='var(--red)';}
+  if(dot&&lbl){
+    if(healthy){dot.className='dot live';lbl.textContent='ENDPOINT LIVE';lbl.style.color='var(--green)';}
+    else{dot.className='dot dead';lbl.textContent=ep.status||'OFFLINE';lbl.style.color='var(--red)';}
+  }
 
   // ── Metrics ──
   const m=d.metrics||{};
@@ -410,114 +412,119 @@ function renderMonitor(d){
     const acc=m.accuracy||0, auc=m.roc_auc||0, rec=m.recall||0;
     const pre=m.precision||0, f1=m.f1||0, spec=m.specificity||0;
 
-    document.getElementById('fillAcc').style.width=(acc*100)+'%';
-    document.getElementById('fillAuc').style.width=(auc*100)+'%';
-    document.getElementById('fillRec').style.width=(rec*100)+'%';
-    document.getElementById('fillPre').style.width=(pre*100)+'%';
-    document.getElementById('fillF1').style.width=(f1*100)+'%';
+    const safe=(id,val)=>{const el=document.getElementById(id);if(el)el.style.width=val;};
+    safe('fillAcc',(acc*100)+'%'); safe('fillAuc',(auc*100)+'%');
+    safe('fillRec',(rec*100)+'%'); safe('fillPre',(pre*100)+'%'); safe('fillF1',(f1*100)+'%');
 
     const fmtV=(v,ok)=>`<span style="color:${ok?'var(--green)':'var(--red)'}">${(v*100).toFixed(1)}%</span>`;
-    document.getElementById('valAcc').innerHTML=fmtV(acc,m.accuracy_ok);
-    document.getElementById('valAuc').innerHTML=fmtV(auc,m.roc_auc_ok);
-    document.getElementById('valRec').innerHTML=fmtV(rec,m.recall_ok);
-    document.getElementById('valPre').textContent=(pre*100).toFixed(1)+'%';
-    document.getElementById('valF1').textContent=(f1*100).toFixed(1)+'%';
-    document.getElementById('valSpec').textContent=(spec*100).toFixed(1)+'%';
+    const safeH=(id,html)=>{const el=document.getElementById(id);if(el)el.innerHTML=html;};
+    const safeT=(id,txt)=>{const el=document.getElementById(id);if(el)el.textContent=txt;};
+
+    safeH('valAcc',fmtV(acc,m.accuracy_ok));
+    safeH('valAuc',fmtV(auc,m.roc_auc_ok));
+    safeH('valRec',fmtV(rec,m.recall_ok));
+    safeT('valPre',(pre*100).toFixed(1)+'%');
+    safeT('valF1',(f1*100).toFixed(1)+'%');
+    safeT('valSpec',(spec*100).toFixed(1)+'%');
 
     const allOk=m.accuracy_ok&&m.roc_auc_ok&&m.recall_ok;
     badge('metricsBadge',allOk?'ALL PASS':'GATE FAIL',allOk?'green':'red');
-    document.getElementById('metricsCard').className='status-card '+(allOk?'ok':'alert');
+    const mc=document.getElementById('metricsCard');
+    if(mc) mc.className='status-card '+(allOk?'ok':'alert');
 
     // Confusion matrix
-    const cm=m.confusion_matrix||{tn:240,fp:15,fn:50,tp:69};
-    document.getElementById('cmTN').textContent=cm.tn||'—';
-    document.getElementById('cmFP').textContent=cm.fp||'—';
-    document.getElementById('cmFN').textContent=cm.fn||'—';
-    document.getElementById('cmTP').textContent=cm.tp||'—';
+    const cm=m.confusion_matrix||{tn:0,fp:0,fn:0,tp:0};
+    safeT('cmTN',cm.tn!==undefined?cm.tn:'—');
+    safeT('cmFP',cm.fp!==undefined?cm.fp:'—');
+    safeT('cmFN',cm.fn!==undefined?cm.fn:'—');
+    safeT('cmTP',cm.tp!==undefined?cm.tp:'—');
 
     // Pipeline checks
     setCheck('chkAcc','chkAccSub',m.accuracy_ok,'','',`Current: ${(acc*100).toFixed(1)}% | Min: 80%`);
     setCheck('chkAuc','chkAucSub',m.roc_auc_ok,'','',`Current: ${(auc*100).toFixed(1)}% | Min: 75%`);
     setCheck('chkRec','chkRecSub',m.recall_ok,'','',`Current: ${(rec*100).toFixed(1)}% | Min: 50%`);
+  } else {
+    badge('metricsBadge','S3 ERROR','red');
+    log('Metrics error: '+m.error,'err');
   }
 
-  // Endpoint + credentials checks
+  // Endpoint + credentials checks (async — fetch /api/health)
   setCheck('chkEp','chkEpSub',healthy,'','',ep.status||'Unknown');
-  const r=await fetch('/api/health').then(x=>x.json()).catch(()=>({}));
-  setCheck('chkCreds','chkCredsSub',r.credentials==='set','','',
-    r.credentials==='set'?'Access key set':'Missing AWS credentials');
-  setCheck('chkS3','chkS3Sub',!m.error,'','',
-    m.error?'Could not load from S3':'evaluation_results.json found');
+  try {
+    const h=await fetch('/api/health').then(x=>x.json());
+    setCheck('chkCreds','chkCredsSub',h.credentials==='set','','',
+      h.credentials==='set'?'Access key + token set':'Missing AWS credentials');
+    setCheck('chkS3','chkS3Sub',!m.error,'','',
+      m.error?'Could not load from S3':'evaluation_results.json found');
+    if(h.token_valid===false){
+      log('⚠ AWS token expired — refresh credentials in .env file','err');
+      const ab2=document.getElementById('alertBanner');
+      if(ab2){ab2.innerHTML='⚠ AWS TOKEN EXPIRED — Go to AWS Academy → copy new credentials → update .env file → rebuild Docker';ab2.classList.add('show');}
+    }
+  } catch(he){
+    log('Health check failed: '+he.message,'err');
+  }
 
   // ── Drift indicators ──
-  const drift=d.drift||{};
-  // Model age (approximate from endpoint last modified)
   if(ep.last_modified){
     const days=Math.floor((Date.now()-new Date(ep.last_modified).getTime())/(86400000));
     const weeks=Math.floor(days/7);
     const aged=weeks>=4;
-    document.getElementById('dModelAge').textContent=weeks>0?`${weeks} weeks`:`${days} days`;
-    document.getElementById('dModelAge').style.color=aged?'var(--gold)':'var(--green)';
-    document.getElementById('dModelAgeSub').textContent=aged?'Consider retraining':'Recently deployed';
-    if(aged) document.getElementById('driftGrid').querySelector('.drift-card:last-child').className='drift-card warn';
+    const ageEl=document.getElementById('dModelAge');
+    const ageSub=document.getElementById('dModelAgeSub');
+    if(ageEl){ageEl.textContent=weeks>0?`${weeks}w`:`${days}d`;ageEl.style.color=aged?'var(--gold)':'var(--green)';}
+    if(ageSub) ageSub.textContent=aged?'Consider retraining':'Recently deployed';
   } else {
-    document.getElementById('dModelAge').textContent='Unknown';
-    document.getElementById('dModelAge').style.color='var(--dim)';
+    const ageEl=document.getElementById('dModelAge');
+    if(ageEl){ageEl.textContent='Unknown';ageEl.style.color='var(--dim)';}
   }
 
-  // Prediction rate drift (from last batch)
   if(d.batches&&d.batches.length>0){
-    document.getElementById('dPredRate').textContent=d.batches.length+' uploads';
-    document.getElementById('dPredRate').style.color='var(--cyan)';
-    document.getElementById('dPredRateSub').textContent=`Last: ${d.batches[0].quarter||'—'}`;
+    const prEl=document.getElementById('dPredRate');
+    const prSub=document.getElementById('dPredRateSub');
+    if(prEl){prEl.textContent=d.batches.length+' uploads';prEl.style.color='var(--cyan)';}
+    if(prSub) prSub.textContent=`Last: ${d.batches[0].quarter||'—'}`;
   } else {
-    document.getElementById('dPredRate').textContent='No data';
-    document.getElementById('dPredRate').style.color='var(--dim)';
-    document.getElementById('dPredRateSub').textContent='No quarterly uploads yet';
+    const prEl=document.getElementById('dPredRate');
+    const prSub=document.getElementById('dPredRateSub');
+    if(prEl){prEl.textContent='No data';prEl.style.color='var(--dim)';}
+    if(prSub) prSub.textContent='No quarterly uploads yet';
   }
 
-  // Training data drift (static indicators based on known IBM dataset stats)
-  document.getElementById('dOvertime').textContent='28% baseline';
-  document.getElementById('dOvertime').style.color='var(--green)';
-  document.getElementById('dOvertimeSub').textContent='IBM HR: 28% overtime rate';
-  document.getElementById('dIncome').textContent='₹6,502 median';
-  document.getElementById('dIncome').style.color='var(--green)';
-  document.getElementById('dIncomeSub').textContent='IBM HR training distribution';
+  const otEl=document.getElementById('dOvertime');
+  const otSub=document.getElementById('dOvertimeSub');
+  const incEl=document.getElementById('dIncome');
+  const incSub=document.getElementById('dIncomeSub');
+  if(otEl){otEl.textContent='28% baseline';otEl.style.color='var(--green)';}
+  if(otSub) otSub.textContent='Training: 28% overtime rate';
+  if(incEl){incEl.textContent='₹6,502 median';incEl.style.color='var(--green)';}
+  if(incSub) incSub.textContent='Training data distribution';
 
   // ── Batch history ──
   const tbody=document.getElementById('batchHistBody');
-  tbody.innerHTML='';
-  if(d.batches&&d.batches.length>0){
-    d.batches.forEach(b=>{
-      const tr=document.createElement('tr');
-      const fname=b.key.split('/').pop();
-      const dt=b.uploaded?new Date(b.uploaded).toLocaleDateString('en-IN',
-        {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
-      tr.innerHTML=`
-        <td style="color:var(--cyan)">${b.quarter||'—'}</td>
-        <td style="color:var(--txt)">${fname}</td>
-        <td style="color:var(--dim)">${b.size_kb} KB</td>
-        <td style="color:var(--dim)">${dt}</td>`;
-      tbody.appendChild(tr);
-    });
-  } else {
-    tbody.innerHTML='<tr><td colspan="4" style="color:var(--dim);text-align:center;padding:1.25rem;">No quarterly batches uploaded yet — use the Batch page to upload your first CSV</td></tr>';
+  if(tbody){
+    tbody.innerHTML='';
+    if(d.batches&&d.batches.length>0){
+      d.batches.forEach(b=>{
+        const tr=document.createElement('tr');
+        const fname=b.key.split('/').pop();
+        const dt=b.uploaded?new Date(b.uploaded).toLocaleDateString('en-IN',
+          {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+        tr.innerHTML=`<td style="color:var(--cyan)">${b.quarter||'—'}</td>
+          <td style="color:var(--txt)">${fname}</td>
+          <td style="color:var(--dim)">${b.size_kb} KB</td>
+          <td style="color:var(--dim)">${dt}</td>`;
+        tbody.appendChild(tr);
+      });
+    } else {
+      tbody.innerHTML='<tr><td colspan="4" style="color:var(--dim);text-align:center;padding:1.25rem;">No quarterly batches uploaded yet — use the Batch page to upload your first CSV</td></tr>';
+    }
   }
 
-  log('Monitor data loaded','ok');
+  log('Monitor data loaded successfully','ok');
 }
 
-// Needs async in the render — wrap the health check call
-async function renderMonitorAsync(d){
-  renderMonitorSync(d);
-  try{
-    const h=await fetch('/api/health').then(x=>x.json());
-    setCheck('chkCreds','chkCredsSub',h.credentials==='set','','',
-      h.credentials==='set'?'Access key + token set':'Missing credentials');
-    setCheck('chkS3','chkS3Sub',(d.metrics&&!d.metrics.error),'','',
-      (d.metrics&&d.metrics.error)?'Could not load from S3':'evaluation_results.json found');
-  } catch(e){}
-}
+// renderMonitorAsync removed — merged into renderMonitor()
 
 function renderFallback(){
   // Show hardcoded known metrics as fallback
@@ -528,103 +535,10 @@ function renderFallback(){
       accuracy_ok:true,roc_auc_ok:true,recall_ok:true,source:'fallback'},
     drift:{},batches:[],retrain:false,alerts:['Could not connect to API — showing cached data']
   };
-  renderMonitorSync(fallback);
+  renderMonitor(fallback);
 }
 
-// Synchronous render (health check done separately)
-function renderMonitorSync(d){
-  const alerts=d.alerts||[];
-  const ab=document.getElementById('alertBanner');
-  if(alerts.length>0){ab.innerHTML='⚠ '+alerts.join(' · ');ab.classList.add('show');}
-  else{ab.classList.remove('show');}
-
-  document.getElementById('retrainSection').style.display=d.retrain?'flex':'none';
-
-  const ep=d.endpoint||{};
-  const healthy=ep.healthy||false;
-  document.getElementById('epCard').className='status-card '+(healthy?'ok':'alert');
-  badge('epBadge',healthy?'IN SERVICE':ep.status||'UNKNOWN',healthy?'green':'red');
-  const epS=document.getElementById('epStatus');
-  epS.textContent=ep.status||'—';
-  epS.style.color=healthy?'var(--green)':'var(--red)';
-  document.getElementById('epInstance').textContent=ep.instance_type||'ml.t2.medium';
-
-  const dot=document.getElementById('stDot'),lbl=document.getElementById('stLabel');
-  if(healthy){dot.className='dot live';lbl.textContent='ENDPOINT LIVE';lbl.style.color='var(--green)';}
-  else{dot.className='dot dead';lbl.textContent=ep.status||'OFFLINE';lbl.style.color='var(--red)';}
-
-  const m=d.metrics||{};
-  if(!m.error){
-    const acc=m.accuracy||0,auc=m.roc_auc||0,rec=m.recall||0,pre=m.precision||0,f1=m.f1||0,spec=m.specificity||0;
-    document.getElementById('fillAcc').style.width=(acc*100)+'%';
-    document.getElementById('fillAuc').style.width=(auc*100)+'%';
-    document.getElementById('fillRec').style.width=(rec*100)+'%';
-    document.getElementById('fillPre').style.width=(pre*100)+'%';
-    document.getElementById('fillF1').style.width=(f1*100)+'%';
-    const fmtV=(v,ok)=>`<span style="color:${ok?'var(--green)':'var(--red)'}">${(v*100).toFixed(1)}%</span>`;
-    document.getElementById('valAcc').innerHTML=fmtV(acc,m.accuracy_ok);
-    document.getElementById('valAuc').innerHTML=fmtV(auc,m.roc_auc_ok);
-    document.getElementById('valRec').innerHTML=fmtV(rec,m.recall_ok);
-    document.getElementById('valPre').textContent=(pre*100).toFixed(1)+'%';
-    document.getElementById('valF1').textContent=(f1*100).toFixed(1)+'%';
-    document.getElementById('valSpec').textContent=(spec*100).toFixed(1)+'%';
-    const allOk=m.accuracy_ok&&m.roc_auc_ok&&m.recall_ok;
-    badge('metricsBadge',allOk?'ALL PASS':'GATE FAIL',allOk?'green':'red');
-    document.getElementById('metricsCard').className='status-card '+(allOk?'ok':'alert');
-    const cm=m.confusion_matrix||{tn:240,fp:15,fn:50,tp:69};
-    ['TN','FP','FN','TP'].forEach(k=>{ const el=document.getElementById('cm'+k); if(el) el.textContent=cm[k.toLowerCase()]||'—'; });
-    setCheck('chkAcc','chkAccSub',m.accuracy_ok,'','',`Current: ${(acc*100).toFixed(1)}% | Min: 80%`);
-    setCheck('chkAuc','chkAucSub',m.roc_auc_ok,'','',`Current: ${(auc*100).toFixed(1)}% | Min: 75%`);
-    setCheck('chkRec','chkRecSub',m.recall_ok,'','',`Current: ${(rec*100).toFixed(1)}% | Min: 50%`);
-  }
-  setCheck('chkEp','chkEpSub',healthy,'','',ep.status||'Unknown');
-
-  // Drift
-  if(ep.last_modified){
-    const days=Math.floor((Date.now()-new Date(ep.last_modified).getTime())/86400000);
-    const weeks=Math.floor(days/7);
-    document.getElementById('dModelAge').textContent=weeks>0?`${weeks}w`:`${days}d`;
-    document.getElementById('dModelAge').style.color=weeks>=4?'var(--gold)':'var(--green)';
-    document.getElementById('dModelAgeSub').textContent=weeks>=4?'Consider retraining':'Recently deployed';
-  } else {
-    document.getElementById('dModelAge').textContent='Unknown';
-    document.getElementById('dModelAge').style.color='var(--dim)';
-  }
-  if(d.batches&&d.batches.length>0){
-    document.getElementById('dPredRate').textContent=d.batches.length+' uploads';
-    document.getElementById('dPredRate').style.color='var(--cyan)';
-    document.getElementById('dPredRateSub').textContent=`Last: ${d.batches[0].quarter||'—'}`;
-  } else {
-    document.getElementById('dPredRate').textContent='No data';
-    document.getElementById('dPredRateSub').textContent='No uploads yet';
-  }
-  document.getElementById('dOvertime').textContent='28% baseline';
-  document.getElementById('dOvertime').style.color='var(--green)';
-  document.getElementById('dOvertimeSub').textContent='IBM HR: 28% overtime rate';
-  document.getElementById('dIncome').textContent='₹6,502 median';
-  document.getElementById('dIncome').style.color='var(--green)';
-  document.getElementById('dIncomeSub').textContent='IBM HR training distribution';
-
-  // Batch history
-  const tbody=document.getElementById('batchHistBody');
-  tbody.innerHTML='';
-  if(d.batches&&d.batches.length>0){
-    d.batches.forEach(b=>{
-      const tr=document.createElement('tr');
-      const fname=b.key.split('/').pop();
-      const dt=b.uploaded?new Date(b.uploaded).toLocaleDateString('en-IN',
-        {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
-      tr.innerHTML=`<td style="color:var(--cyan)">${b.quarter||'—'}</td>
-        <td style="color:var(--txt)">${fname}</td>
-        <td style="color:var(--dim)">${b.size_kb} KB</td>
-        <td style="color:var(--dim)">${dt}</td>`;
-      tbody.appendChild(tr);
-    });
-  } else {
-    tbody.innerHTML='<tr><td colspan="4" style="color:var(--dim);text-align:center;padding:1.25rem;">No quarterly batches yet</td></tr>';
-  }
-  log('Monitor refreshed','ok');
-}
+// renderMonitorSync merged into renderMonitor()
 
 function toggleAutoRefresh(){
   autoOn=!autoOn;
