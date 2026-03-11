@@ -1,8 +1,9 @@
 """
 backend/app.py — Flask entry point (v3.1)
-FIX: renamed page route functions (page_index, page_batch, page_monitor) to avoid
-     endpoint name collision with api Blueprint functions (index, batch, monitor, health).
-     Flask requires unique function names across app + all blueprints.
+FIX: Renamed page route functions (page_index, page_batch, page_monitor, page_analytics)
+     to avoid Flask endpoint name collision with api Blueprint functions.
+     api.py Blueprint defines monitor(), index(), batch() etc — Flask requires
+     unique function names across app + all registered blueprints.
 """
 import os, logging
 from flask import Flask, render_template
@@ -30,8 +31,11 @@ def page_batch():
 
 @app.route("/monitor")
 def page_monitor():
-    # NOTE: renders monitoring.html (not monitor.html) to avoid template name confusion
-    return render_template("monitoring.html", endpoint_name=ENDPOINT_NAME, region=AWS_REGION)
+    return render_template("monitor.html", endpoint_name=ENDPOINT_NAME, region=AWS_REGION)
+
+@app.route("/analytics")
+def page_analytics():
+    return render_template("analytics.html", endpoint_name=ENDPOINT_NAME, region=AWS_REGION)
 
 if __name__ == "__main__":
     print(f"\n  Template : {TEMPLATE_DIR}")

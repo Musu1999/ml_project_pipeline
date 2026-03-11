@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>AttritionIQ — Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/static/css/style.css"/>
+<style>
+/* ── page chrome ───────────────────────────────────────────── */
+#loader{animation:lhide 0s 1.1s forwards!important;}
+@keyframes lhide{to{opacity:0;visibility:hidden;display:none!important;pointer-events:none;}}
+
+.page{padding:2rem 3rem 3rem;}
+
+/* ── KPI strip ─────────────────────────────────────────────── */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:.9rem;margin-bottom:2rem;}
+.kpi{background:var(--s1);border:1px solid var(--b1);padding:1.3rem 1.1rem;
+     position:relative;overflow:hidden;transition:border-color .3s;}
+.kpi::after{content:'';position:absolute;inset-x:0;bottom:0;height:2px;
+  transform:scaleX(0);transform-origin:left;transition:transform .45s;}
+.kpi:hover::after{transform:scaleX(1);}
+.kpi.c::after{background:var(--cyan);}  .kpi.r::after{background:var(--red);}
+.kpi.g::after{background:var(--green);} .kpi.o::after{background:var(--gold);}
+.kpi.d::after{background:var(--dim);}
+.kpi-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:.15em;
+  text-transform:uppercase;margin-bottom:.45rem;}
+.kpi-num{font-size:1.85rem;font-weight:800;letter-spacing:-.04em;line-height:1;margin-bottom:.25rem;}
+.kpi-sub{font-family:var(--mono);font-size:9px;color:var(--dim);}
+.kpi-tag{font-family:var(--mono);font-size:9px;margin-top:.35rem;}
+
+/* ── chart grid ────────────────────────────────────────────── */
+.row{display:grid;gap:1.25rem;margin-bottom:1.25rem;}
+.r2{grid-template-columns:1fr 1fr;}
+.r3{grid-template-columns:3fr 2fr;}
+.r1{grid-template-columns:1fr;}
+
+.card{background:var(--s1);border:1px solid var(--b1);padding:1.4rem;position:relative;}
+.ctitle{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.18em;
+  text-transform:uppercase;margin-bottom:.2rem;display:flex;align-items:center;justify-content:space-between;}
+.csub{font-family:var(--mono);font-size:8px;color:var(--dim);opacity:.55;margin-bottom:1.1rem;}
+canvas{display:block;width:100%!important;}
+
+/* badges */
+.badge{font-family:var(--mono);font-size:8px;padding:.15rem .5rem;border:1px solid;flex-shrink:0;}
+.bc{color:var(--cyan);border-color:rgba(0,229,255,.3);}
+.bg{color:var(--green);border-color:rgba(168,255,62,.3);}
+.bo{color:var(--gold);border-color:rgba(255,209,102,.3);}
+.br{color:var(--red);border-color:rgba(255,61,107,.3);}
+
+/* ── funnel ────────────────────────────────────────────────── */
+.funnel{display:flex;flex-direction:column;gap:.5rem;}
+.frow{display:flex;align-items:center;gap:.8rem;}
+.fbar{flex:1;height:42px;background:var(--s2);position:relative;overflow:hidden;}
+.ffill{position:absolute;inset-y:0;left:0;width:0;transition:width 1.5s cubic-bezier(.4,0,.2,1);}
+.fname{position:absolute;left:.7rem;top:50%;transform:translateY(-50%);
+  font-family:var(--mono);font-size:10px;font-weight:700;z-index:1;}
+.fnum{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);
+  font-family:var(--mono);font-size:10px;z-index:1;color:var(--txt);}
+.fpct{font-family:var(--mono);font-size:9px;width:44px;text-align:right;flex-shrink:0;}
+.farrow{font-family:var(--mono);font-size:8px;color:var(--dim);padding-left:44px;}
+
+/* ── roc slider ────────────────────────────────────────────── */
+.roc-ctrl{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap;}
+.roc-ctrl span{font-family:var(--mono);font-size:9px;color:var(--dim);}
+input[type=range]{-webkit-appearance:none;height:3px;background:var(--b1);flex:1;max-width:160px;outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;
+  border-radius:50%;background:var(--cyan);cursor:pointer;}
+
+/* ── radar legend ──────────────────────────────────────────── */
+.rl{display:flex;flex-direction:column;gap:.55rem;padding-left:.5rem;}
+.rli{display:flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:9px;color:var(--dim);}
+.rld{width:18px;height:3px;flex-shrink:0;}
+.rli-note{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:.6rem;line-height:1.65;}
+
+/* ── calib legend ──────────────────────────────────────────── */
+.cleg{display:flex;gap:1.25rem;margin-top:.6rem;}
+.cleg-item{display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:8px;color:var(--dim);}
+.cleg-line{width:18px;height:2px;}
+
+/* ── impact scenario cards ─────────────────────────────────── */
+.scenarios{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-top:.75rem;}
+.sc{background:var(--s2);padding:.9rem;}
+.sc-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.35rem;}
+.sc-num{font-size:1.45rem;font-weight:800;letter-spacing:-.03em;}
+.sc-desc{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:.2rem;line-height:1.5;}
+
+/* ── intervention timing cells ─────────────────────────────── */
+.timing{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-top:.75rem;}
+.tc{background:var(--s2);padding:.9rem;text-align:center;}
+.tc-wk{font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.3rem;}
+.tc-val{font-size:1.4rem;font-weight:800;letter-spacing:-.03em;}
+.tc-sub{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:.2rem;}
+
+/* ── scatter tooltip ────────────────────────────────────────── */
+#stip{position:fixed;background:var(--s1);border:1px solid var(--b1);
+  font-family:var(--mono);font-size:9px;padding:.5rem .75rem;pointer-events:none;
+  z-index:999;display:none;line-height:1.65;min-width:140px;}
+</style>
+</head>
+<body>
+
+<div id="stip"></div>
+
+<div id="loader">
+  <div class="lb"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+  <div class="loader-txt">LOADING ANALYTICS...</div>
+</div>
+
+<div class="wrap">
+  <!-- ── HEADER ── -->
+  <header>
+    <div class="logo">
+      <div class="logo-mark">HR<br>AI</div>
+      <div>
+        <div class="logo-name">AttritionIQ</div>
+        <div class="logo-sub">MOUSUMI · HR ANALYTICS · SAGEMAKER</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <a href="/" class="nav-link">PREDICT</a>
+      <a href="/batch" class="nav-link">BATCH</a>
+      <a href="/analytics" class="nav-link active">ANALYTICS</a>
+      <a href="/monitor" class="nav-link">MONITOR</a>
+      <div class="status-badge">
+        <div class="dot wait" id="stDot"></div>
+        <span id="stLabel" style="color:var(--gold)">CHECKING…</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── HERO ── -->
+  <section class="hero">
+    <div class="hero-glow"></div>
+    <div class="eyebrow">BUSINESS INTELLIGENCE DASHBOARD</div>
+    <h1>Prediction<br><span class="c">Analytics</span><br><span class="r">&amp; Impact</span></h1>
+    <p class="hero-sub">
+      Prediction → conversion · Model performance · ROC curve · Business ROI<br>
+      Dataset: 7,470 employees · XGBoost v2 · AWS SageMaker ap-south-1
+    </p>
+  </section>
+
+  <div class="page">
+
+    <!-- ══════════════════════════════════════════════════
+         KPI STRIP
+    ══════════════════════════════════════════════════ -->
+    <div class="kpis">
+      <div class="kpi r">
+        <div class="kpi-lbl">High-Risk Employees</div>
+        <div class="kpi-num" style="color:var(--red)" id="kN0">693</div>
+        <div class="kpi-sub">of 7,470 screened</div>
+        <div class="kpi-tag" style="color:var(--red)">▲ 9.3% attrition predicted</div>
+      </div>
+      <div class="kpi o">
+        <div class="kpi-lbl">Potential Cost Saved</div>
+        <div class="kpi-num" style="color:var(--gold)" id="kN1">₹8.7Cr</div>
+        <div class="kpi-sub">realistic scenario (50%)</div>
+        <div class="kpi-tag" style="color:var(--gold)">▲ ₹2.5L avg per hire</div>
+      </div>
+      <div class="kpi c">
+        <div class="kpi-lbl">Model Accuracy</div>
+        <div class="kpi-num" style="color:var(--cyan)" id="kN2">87.1%</div>
+        <div class="kpi-sub">on 1,494 test samples</div>
+        <div class="kpi-tag" style="color:var(--cyan)">▲ ROC AUC 0.823</div>
+      </div>
+      <div class="kpi g">
+        <div class="kpi-lbl">Recall (Sensitivity)</div>
+        <div class="kpi-num" style="color:var(--green)" id="kN3">58.4%</div>
+        <div class="kpi-sub">true attrition caught</div>
+        <div class="kpi-tag" style="color:var(--green)">▲ vs 42.8% baseline DT</div>
+      </div>
+      <div class="kpi d">
+        <div class="kpi-lbl">False Negatives</div>
+        <div class="kpi-num" style="color:var(--dim)" id="kN4">104</div>
+        <div class="kpi-sub">missed high-risk employees</div>
+        <div class="kpi-tag" style="color:var(--red)">▲ ₹2.6Cr exposure</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         ROW 1 — Prediction Funnel  +  ROC Curve
+    ══════════════════════════════════════════════════ -->
+    <div class="row r2">
+
+      <!-- Prediction → Retention Funnel -->
+      <div class="card">
+        <div class="ctitle">PREDICTION → RETENTION FUNNEL <span class="badge bc">7,470 employees</span></div>
+        <div class="csub">How model predictions convert into HR actions and successful retention outcomes</div>
+        <div class="funnel" id="funnelEl"></div>
+      </div>
+
+      <!-- ROC Curve -->
+      <div class="card">
+        <div class="ctitle">ROC CURVE — AUC 0.823 <span class="badge bg">XGBoost v2</span></div>
+        <div class="csub">True positive rate vs false positive rate · drag threshold to see operating point</div>
+        <div class="roc-ctrl">
+          <span>Threshold:</span>
+          <input type="range" id="rocSlider" min="5" max="90" value="35" oninput="onRocSlide(this.value)"/>
+          <span id="rocTVal" style="color:var(--cyan);font-weight:700">0.35</span>
+          <span id="rocPtInfo" style="color:var(--dim)">TPR 72% · FPR 12%</span>
+        </div>
+        <canvas id="cvROC" height="260"></canvas>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         ROW 2 — Model Radar  +  Feature Attrition Rates
+    ══════════════════════════════════════════════════ -->
+    <div class="row r2">
+
+      <!-- Radar: model comparison -->
+      <div class="card">
+        <div class="ctitle">MODEL PERFORMANCE RADAR <span class="badge bo">3 versions compared</span></div>
+        <div class="csub">Decision Tree vs Random Forest vs XGBoost v2 across all 6 quality metrics</div>
+        <div style="display:flex;align-items:center;gap:1.5rem;">
+          <canvas id="cvRadar" width="320" height="300"></canvas>
+          <div class="rl">
+            <div class="rli"><div class="rld" style="background:var(--dim)"></div>Decision Tree</div>
+            <div class="rli"><div class="rld" style="background:var(--gold)"></div>Random Forest</div>
+            <div class="rli"><div class="rld" style="background:var(--cyan)"></div>XGBoost v2 (current)</div>
+            <div class="rli-note">
+              White dashed = minimum<br>
+              quality threshold<br><br>
+              Accuracy: 80%<br>
+              Recall: 50%<br>
+              Precision: 60%<br>
+              F1: 55%<br>
+              ROC-AUC: 75%<br>
+              Specificity: 85%
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature attrition rate grouped bar -->
+      <div class="card">
+        <div class="ctitle">ATTRITION RATE BY KEY FEATURE <span class="badge br">IBM HR dataset</span></div>
+        <div class="csub">Actual % employees who left — split by whether feature is present (IBM HR Analytics)</div>
+        <canvas id="cvFeature" height="300"></canvas>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         ROW 3 — Calibration Curve  +  Income vs Risk Scatter
+    ══════════════════════════════════════════════════ -->
+    <div class="row r2">
+
+      <!-- Calibration / score distribution combo -->
+      <div class="card">
+        <div class="ctitle">SCORE CALIBRATION CURVE <span class="badge bc">10 buckets</span></div>
+        <div class="csub">Predicted probability buckets vs actual attrition rate — perfect model = diagonal line</div>
+        <canvas id="cvCalib" height="260"></canvas>
+        <div class="cleg">
+          <div class="cleg-item"><div class="cleg-line" style="background:var(--cyan);height:8px;opacity:.5"></div>Employee count (bar)</div>
+          <div class="cleg-item"><div class="cleg-line" style="background:var(--red)"></div>Actual attrition rate</div>
+          <div class="cleg-item"><div class="cleg-line" style="background:rgba(255,255,255,.2)"></div>Perfect calibration</div>
+        </div>
+      </div>
+
+      <!-- Scatter: income vs attrition probability -->
+      <div class="card">
+        <div class="ctitle">MONTHLY INCOME vs ATTRITION RISK <span class="badge bo">hover for details</span></div>
+        <div class="csub">400 sampled employees — lower income correlates strongly with higher predicted attrition</div>
+        <canvas id="cvScatter" height="260"
+          onmousemove="scHover(event)" onmouseleave="scLeave()"></canvas>
+        <div style="display:flex;gap:1.25rem;margin-top:.55rem;">
+          <div style="display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:8px;color:var(--dim);">
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--red)"></div>HIGH (&gt;70%)
+          </div>
+          <div style="display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:8px;color:var(--dim);">
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--gold)"></div>MEDIUM (40-70%)
+          </div>
+          <div style="display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:8px;color:var(--dim);">
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--green)"></div>LOW (&lt;40%)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         ROW 4 — Business Impact  +  Intervention Timing
+    ══════════════════════════════════════════════════ -->
+    <div class="row r2">
+
+      <!-- Business impact bar chart -->
+      <div class="card">
+        <div class="ctitle">BUSINESS IMPACT — COST SAVED BY SCENARIO <span class="badge bg">ROI analysis</span></div>
+        <div class="csub">Estimated savings (₹Cr) if HIGH-risk employees are retained · ₹2.5L avg replacement cost per hire</div>
+        <canvas id="cvImpact" height="200"></canvas>
+        <div class="scenarios">
+          <div class="sc">
+            <div class="sc-lbl">Pessimistic · 30%</div>
+            <div class="sc-num" style="color:var(--gold)">₹5.2 Cr</div>
+            <div class="sc-desc">208 of 693 HIGH risk retained</div>
+          </div>
+          <div class="sc">
+            <div class="sc-lbl">Realistic · 50%</div>
+            <div class="sc-num" style="color:var(--cyan)">₹8.7 Cr</div>
+            <div class="sc-desc">347 of 693 HIGH risk retained</div>
+          </div>
+          <div class="sc">
+            <div class="sc-lbl">Optimistic · 70%</div>
+            <div class="sc-num" style="color:var(--green)">₹12.1 Cr</div>
+            <div class="sc-desc">485 of 693 HIGH risk retained</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Intervention timing decay curve -->
+      <div class="card">
+        <div class="ctitle">INTERVENTION TIMING vs RETENTION SUCCESS <span class="badge bo">HR strategy</span></div>
+        <div class="csub">Expected % of HIGH-risk employees successfully retained based on speed of HR response</div>
+        <canvas id="cvTiming" height="200"></canvas>
+        <div class="timing">
+          <div class="tc"><div class="tc-wk">WEEK 1</div><div class="tc-val" style="color:var(--green)">74%</div><div class="tc-sub">retention</div></div>
+          <div class="tc"><div class="tc-wk">WEEK 2</div><div class="tc-val" style="color:var(--cyan)">61%</div><div class="tc-sub">retention</div></div>
+          <div class="tc"><div class="tc-wk">WEEK 4</div><div class="tc-val" style="color:var(--gold)">43%</div><div class="tc-sub">retention</div></div>
+          <div class="tc"><div class="tc-wk">WEEK 8+</div><div class="tc-val" style="color:var(--red)">21%</div><div class="tc-sub">retention</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         ROW 5 — Full-width model evolution trend
+    ══════════════════════════════════════════════════ -->
+    <div class="row r1">
+      <div class="card">
+        <div class="ctitle">MODEL EVOLUTION — ALL CHECKPOINTS <span class="badge bc">5 versions</span></div>
+        <div class="csub">Performance trajectory from Decision Tree baseline to current XGBoost v2 with scale_pos_weight tuning</div>
+        <canvas id="cvTrend" height="210"></canvas>
+      </div>
+    </div>
+
+  </div><!-- /page -->
+
+  <!-- ── LOG ── -->
+  <div class="log-section">
+    <div class="sec-title">SYSTEM LOG</div>
+    <div class="terminal" id="term">
+      <div class="log-line inf">[SYSTEM] AttritionIQ Analytics Dashboard v2.0</div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-txt">© 2026 MOUSUMI · CRP TERM 3 · AWS SAGEMAKER + GITHUB ACTIONS + DOCKER</div>
+    <div class="footer-tags">
+      <div class="tag">XGBOOST</div><div class="tag">SAGEMAKER</div>
+      <div class="tag">DOCKER</div><div class="tag">AWS</div>
+    </div>
+  </footer>
+</div><!-- /wrap -->
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT — all charts
+══════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ─── palette ─────────────────────────────────────────────── */
+const P = {
+  bg:'#060a0e', s1:'#0c1118', s2:'#121a22', b1:'#1e2d3d',
+  cy:'#00e5ff', rd:'#ff3d6b', gn:'#a8ff3e', go:'#ffd166',
+  tx:'#c8d8e8', dm:'#4a6a85'
+};
+
+/* ─── tiny helpers ─────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+function log(m, c='') {
+  const t = $('term'); if (!t) return;
+  const d = document.createElement('div');
+  d.className = 'log-line ' + c;
+  d.textContent = `[${new Date().toLocaleTimeString('en-GB',{hour12:false})}] ${m}`;
+  t.appendChild(d); t.scrollTop = t.scrollHeight;
+}
+function mono(sz) { return `${sz}px 'Space Mono',monospace`; }
+function sans(sz, w=700) { return `${w} ${sz}px 'Syne',sans-serif`; }
+function hex2rgba(h, a) {
+  const r=parseInt(h.slice(1,3),16), g=parseInt(h.slice(3,5),16), b=parseInt(h.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+/* ─── canvas setup (DPR-aware) ──────────────────────────────── */
+function setupCanvas(id) {
+  const cv = $(id); if (!cv) return null;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = cv.parentElement.getBoundingClientRect();
+  const w = rect.width - 40; // card padding
+  const h = parseInt(cv.getAttribute('height'));
+  cv.width  = w * dpr;
+  cv.height = h * dpr;
+  cv.style.width  = w + 'px';
+  cv.style.height = h + 'px';
+  const cx = cv.getContext('2d');
+  cx.scale(dpr, dpr);
+  return { cx, w, h };
+}
+
+/* ─── grid helper ──────────────────────────────────────────── */
+function grid(cx, x0, y0, w, h, xn=5, yn=5) {
+  cx.save();
+  cx.strokeStyle = P.b1; cx.lineWidth = 1;
+  for (let i=0; i<=xn; i++) { const x=x0+w*i/xn; cx.beginPath(); cx.moveTo(x,y0); cx.lineTo(x,y0+h); cx.stroke(); }
+  for (let i=0; i<=yn; i++) { const y=y0+h*i/yn; cx.beginPath(); cx.moveTo(x0,y); cx.lineTo(x0+w,y); cx.stroke(); }
+  cx.restore();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   1. PREDICTION → RETENTION FUNNEL
+══════════════════════════════════════════════════════════════ */
+function buildFunnel() {
+  const wrap = $('funnelEl'); if (!wrap) return;
+  const steps = [
+    { lbl:'Employees Screened',     n:7470, pct:100,  col:P.cy,  bg:'rgba(0,229,255,.12)' },
+    { lbl:'At-Risk Flagged (≥35%)', n:2395, pct:32.1, col:P.go,  bg:'rgba(255,209,102,.12)' },
+    { lbl:'HIGH Risk (>70%)',       n:693,  pct:9.3,  col:P.rd,  bg:'rgba(255,61,107,.12)' },
+    { lbl:'HR Action Taken',        n:520,  pct:75.1, col:'#ff8c42', bg:'rgba(255,140,66,.12)' },
+    { lbl:'Successfully Retained',  n:347,  pct:66.7, col:P.gn,  bg:'rgba(168,255,62,.12)' },
+  ];
+  wrap.innerHTML = '';
+  steps.forEach((s, i) => {
+    if (i > 0) {
+      const a = document.createElement('div');
+      a.className = 'farrow';
+      const conv = (steps[i].n / steps[i-1].n * 100).toFixed(1);
+      a.innerHTML = `↓ <span style="color:${s.col}">${conv}% conversion</span>`;
+      wrap.appendChild(a);
+    }
+    const maxN = steps[0].n;
+    const barPct = (s.n / maxN * 100).toFixed(1);
+    const row = document.createElement('div'); row.className = 'frow';
+    row.innerHTML = `
+      <div class="fbar">
+        <div class="ffill" style="background:${s.bg};border-left:3px solid ${s.col}" data-w="${barPct}%"></div>
+        <div class="fname" style="color:${s.col}">${s.lbl}</div>
+        <div class="fnum">${s.n.toLocaleString('en-IN')}</div>
+      </div>
+      <div class="fpct" style="color:${s.col}">${barPct}%</div>`;
+    wrap.appendChild(row);
+  });
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      document.querySelectorAll('.ffill').forEach(el => { el.style.width = el.dataset.w; });
+    }, 350);
+  });
+  log('Funnel rendered', 'ok');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   2. ROC CURVE
+══════════════════════════════════════════════════════════════ */
+// Approximate XGBoost ROC points (AUC ≈ 0.823)
+const ROC = [
+  [0,0],[.01,.16],[.02,.28],[.04,.42],[.06,.53],[.09,.61],[.13,.68],
+  [.18,.73],[.24,.77],[.31,.81],[.40,.84],[.50,.87],[.61,.90],
+  [.72,.92],[.82,.94],[.90,.96],[.96,.975],[1,1]
+];
+
+function rocPtAt(thresh) {
+  // thresh 5-90 → operating point index
+  const t = 1 - thresh / 100;
+  const idx = Math.max(0, Math.min(ROC.length-2, Math.round(t * (ROC.length-1))));
+  return ROC[idx];
+}
+
+let _rocT = 35;
+function drawROC(thresh) {
+  const s = setupCanvas('cvROC'); if (!s) return;
+  const { cx, w, h } = s;
+  const PAD = { l:44, r:16, t:16, b:36 };
+  const pw = w - PAD.l - PAD.r, ph = h - PAD.t - PAD.b;
+
+  cx.fillStyle = P.s1; cx.fillRect(0,0,w,h);
+  grid(cx, PAD.l, PAD.t, pw, ph, 5, 5);
+
+  // Axis tick labels
+  cx.fillStyle = P.dm; cx.font = mono(8); cx.textAlign = 'center';
+  for (let i=0; i<=5; i++) {
+    cx.fillText((i*20)+'%', PAD.l + pw*i/5, h - PAD.b + 13);
+    cx.textAlign = 'right';
+    cx.fillText((100-i*20)+'%', PAD.l - 6, PAD.t + ph*i/5 + 3);
+    cx.textAlign = 'center';
+  }
+  cx.fillStyle = P.dm; cx.font = mono(8);
+  cx.fillText('FALSE POSITIVE RATE', PAD.l + pw/2, h - 2);
+  cx.save(); cx.translate(11, PAD.t + ph/2); cx.rotate(-Math.PI/2);
+  cx.fillText('TRUE POSITIVE RATE', 0, 0); cx.restore();
+
+  // Baseline diagonal
+  cx.beginPath(); cx.strokeStyle = 'rgba(255,255,255,.13)'; cx.setLineDash([5,5]); cx.lineWidth = 1;
+  cx.moveTo(PAD.l, PAD.t + ph); cx.lineTo(PAD.l + pw, PAD.t); cx.stroke(); cx.setLineDash([]);
+
+  // AUC fill
+  cx.beginPath(); cx.moveTo(PAD.l, PAD.t + ph);
+  ROC.forEach(([x,y]) => cx.lineTo(PAD.l + x*pw, PAD.t + (1-y)*ph));
+  cx.lineTo(PAD.l + pw, PAD.t + ph); cx.closePath();
+  cx.fillStyle = 'rgba(0,229,255,.06)'; cx.fill();
+
+  // ROC line
+  cx.beginPath(); cx.strokeStyle = P.cy; cx.lineWidth = 2.5;
+  ROC.forEach(([x,y], i) => {
+    const px = PAD.l + x*pw, py = PAD.t + (1-y)*ph;
+    i === 0 ? cx.moveTo(px,py) : cx.lineTo(px,py);
+  });
+  cx.stroke();
+
+  // AUC label
+  cx.fillStyle = P.cy; cx.font = sans(13); cx.textAlign = 'left';
+  cx.fillText('AUC = 0.823', PAD.l + 14, PAD.t + 26);
+
+  // Threshold operating point
+  const [fx, fy] = rocPtAt(thresh);
+  const px = PAD.l + fx*pw, py = PAD.t + (1-fy)*ph;
+  cx.beginPath(); cx.arc(px, py, 5, 0, Math.PI*2);
+  cx.fillStyle = P.rd; cx.fill();
+  cx.beginPath(); cx.arc(px, py, 10, 0, Math.PI*2);
+  cx.strokeStyle = hex2rgba(P.rd, .4); cx.lineWidth = 1.5; cx.stroke();
+
+  // Update info label
+  const el = $('rocPtInfo');
+  if (el) el.textContent = `TPR ${(fy*100).toFixed(0)}%  ·  FPR ${(fx*100).toFixed(0)}%`;
+  log(`ROC @ threshold ${(thresh/100).toFixed(2)}: TPR=${(fy*100).toFixed(0)}% FPR=${(fx*100).toFixed(0)}%`);
+}
+
+function onRocSlide(v) {
+  _rocT = +v;
+  $('rocTVal').textContent = (_rocT/100).toFixed(2);
+  drawROC(_rocT);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   3. MODEL PERFORMANCE RADAR
+══════════════════════════════════════════════════════════════ */
+const RADAR_AXES = ['Accuracy','Recall','Precision','F1','ROC-AUC','Specificity'];
+const RADAR_MIN_THRESH = [.80, .50, .60, .55, .75, .85];
+const RADAR_MODELS = [
+  { lbl:'Decision Tree', col:P.dm,  vals:[.793,.428,.641,.519,.694,.891] },
+  { lbl:'Random Forest', col:P.go,  vals:[.851,.513,.703,.593,.782,.919] },
+  { lbl:'XGBoost v2',    col:P.cy,  vals:[.871,.584,.762,.661,.823,.942] },
+];
+
+function drawRadar() {
+  const s = setupCanvas('cvRadar'); if (!s) return;
+  const { cx, w, h } = s;
+  const CX = w/2 - 14, CY = h/2, R = Math.min(w,h)*0.38;
+  const N = RADAR_AXES.length;
+  cx.fillStyle = P.s1; cx.fillRect(0,0,w,h);
+
+  // Web rings
+  for (let lv=1; lv<=5; lv++) {
+    const r = R*lv/5;
+    cx.beginPath();
+    for (let i=0; i<N; i++) {
+      const a = (i/N)*Math.PI*2 - Math.PI/2;
+      const x = CX + r*Math.cos(a), y = CY + r*Math.sin(a);
+      i===0 ? cx.moveTo(x,y) : cx.lineTo(x,y);
+    }
+    cx.closePath();
+    cx.strokeStyle = lv===5 ? 'rgba(255,255,255,.08)' : P.b1;
+    cx.lineWidth = 1; cx.stroke();
+    if (lv % 2 === 0) {
+      cx.fillStyle = P.dm; cx.font = mono(7); cx.textAlign = 'center';
+      cx.fillText((lv*20)+'%', CX+2, CY-r+4);
+    }
+  }
+
+  // Spokes + labels
+  RADAR_AXES.forEach((ax, i) => {
+    const a = (i/N)*Math.PI*2 - Math.PI/2;
+    const xe = CX + R*Math.cos(a), ye = CY + R*Math.sin(a);
+    cx.beginPath(); cx.moveTo(CX,CY); cx.lineTo(xe,ye);
+    cx.strokeStyle = P.b1; cx.lineWidth = 1; cx.stroke();
+    const xl = CX + (R+20)*Math.cos(a), yl = CY + (R+20)*Math.sin(a);
+    cx.fillStyle = P.dm; cx.font = mono(8);
+    cx.textAlign = xl < CX-8 ? 'right' : xl > CX+8 ? 'left' : 'center';
+    cx.fillText(ax, xl, yl+3);
+  });
+
+  // Threshold polygon
+  cx.beginPath();
+  RADAR_MIN_THRESH.forEach((v, i) => {
+    const a = (i/N)*Math.PI*2 - Math.PI/2;
+    const x = CX + R*v*Math.cos(a), y = CY + R*v*Math.sin(a);
+    i===0 ? cx.moveTo(x,y) : cx.lineTo(x,y);
+  });
+  cx.closePath(); cx.strokeStyle='rgba(255,255,255,.22)'; cx.setLineDash([3,4]); cx.lineWidth=1; cx.stroke(); cx.setLineDash([]);
+
+  // Model polygons
+  RADAR_MODELS.forEach((m, mi) => {
+    cx.beginPath();
+    m.vals.forEach((v, i) => {
+      const a = (i/N)*Math.PI*2 - Math.PI/2;
+      const x = CX + R*v*Math.cos(a), y = CY + R*v*Math.sin(a);
+      i===0 ? cx.moveTo(x,y) : cx.lineTo(x,y);
+    });
+    cx.closePath();
+    cx.fillStyle = hex2rgba(m.col, mi===2 ? .12 : .04);
+    cx.fill();
+    cx.strokeStyle = m.col; cx.lineWidth = mi===2 ? 2.5 : 1.5; cx.stroke();
+    // dots
+    m.vals.forEach((v, i) => {
+      const a = (i/N)*Math.PI*2 - Math.PI/2;
+      cx.beginPath(); cx.arc(CX + R*v*Math.cos(a), CY + R*v*Math.sin(a), mi===2?4:2.5, 0, Math.PI*2);
+      cx.fillStyle = m.col; cx.fill();
+    });
+  });
+  log('Radar rendered', 'ok');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   4. FEATURE ATTRITION RATE (grouped bars)
+══════════════════════════════════════════════════════════════ */
+// [feature name, attrition% when absent, attrition% when present]
+const FEAT_DATA = [
+  { n:'OverTime',     no:10.4, yes:30.5 },
+  { n:'Single',       no:12.0, yes:25.3 },
+  { n:'Job Lvl 1',    no:13.1, yes:26.3 },
+  { n:'Low Salary',   no:11.2, yes:26.6 },
+  { n:'WLB 1',        no:11.8, yes:31.2 },
+  { n:'Dist >10km',   no:11.3, yes:21.8 },
+];
+
+function drawFeature() {
+  const s = setupCanvas('cvFeature'); if (!s) return;
+  const { cx, w, h } = s;
+  const PAD = { l:36, r:12, t:28, b:44 };
+  const pw = w - PAD.l - PAD.r, ph = h - PAD.t - PAD.b;
+  const N = FEAT_DATA.length, MAX = 36;
+
+  cx.fillStyle = P.s1; cx.fillRect(0,0,w,h);
+  grid(cx, PAD.l, PAD.t, pw, ph, N-1, 4);
+
+  // Y axis labels
+  cx.fillStyle = P.dm; cx.font = mono(8); cx.textAlign = 'right';
+  for (let i=0; i<=4; i++) {
+    const v = Math.round(MAX*(1 - i/4));
+    cx.fillText(v+'%', PAD.l-5, PAD.t + ph*i/4 + 3);
+  }
+
+  // Legend
+  cx.fillStyle = P.dm; cx.fillRect(PAD.l, 8, 10, 8);
+  cx.font = mono(8); cx.textAlign = 'left'; cx.fillText('Feature absent', PAD.l+13, 16);
+  cx.fillStyle = P.rd; cx.fillRect(PAD.l+110, 8, 10, 8);
+  cx.fillText('Feature present', PAD.l+123, 16);
+
+  const gw = pw / N;
+  const bw = Math.min(gw * 0.32, 18);
+
+  FEAT_DATA.forEach((f, i) => {
+    const gx = PAD.l + gw*(i+0.5);
+
+    // Absent bar
+    const noH = (f.no/MAX)*ph;
+    cx.fillStyle = P.dm;
+    cx.fillRect(gx - bw - 2, PAD.t + ph - noH, bw, noH);
+    cx.fillStyle = P.dm; cx.font = mono(8); cx.textAlign = 'center';
+    cx.fillText(f.no+'%', gx-2, PAD.t + ph - noH - 5);
+
+    // Present bar (gradient)
+    const yH = (f.yes/MAX)*ph;
+    const g = cx.createLinearGradient(0, PAD.t+ph-yH, 0, PAD.t+ph);
+    g.addColorStop(0, P.rd); g.addColorStop(1, hex2rgba(P.rd, .25));
+    cx.fillStyle = g;
+    cx.fillRect(gx+2, PAD.t + ph - yH, bw, yH);
+    cx.fillStyle = P.tx; cx.font = mono(8); cx.textAlign = 'center';
+    cx.fillText(f.yes+'%', gx+2+bw/2, PAD.t + ph - yH - 5);
+
+    // X label
+    cx.fillStyle = P.dm; cx.font = mono(8); cx.textAlign = 'center';
+    cx.fillText(f.n, gx, PAD.t + ph + 14);
+  });
+
+  // Baseline avg line at 16.5%
+  const by = PAD.t + ph*(1 - 16.5/MAX);
+  cx.beginPath(); cx.strokeStyle = hex2rgba(P.cy,.4); cx.setLineDash([4,4]); cx.lineWidth=1;
+  cx.moveTo(PAD.l, by); cx.lineTo(PAD.l+pw, by); cx.stroke(); cx.setLineDash([]);
+  cx.fillStyle = hex2rgba(P.cy,.6); cx.font = mono(7); cx.textAlign = 'right';
+  cx.fillText('avg 16.5%', PAD.l+pw, by-4);
+
+  log('Feature impact rendered', 'ok');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   5. CALIBRATION CURVE + SCORE DISTRIBUTION
+══════════════════════════════════════════════════════════════ */
+const CALIB = [
+  { mid:.05, n:312, actual:.031 }, { mid:.15, n:228, actual:.071 },
+  { mid:.25, n:168, actual:.119 }, { mid:.35, n:108, actual:.185 },
+  { mid:.45, n:88,  actual:.273 }, { mid:.55, n:112, actual:.402 },
+  { mid:.65, n:94,  actual:.532 }, { mid:.75, n:68,  actual:.676 },
+  { mid:.85, n:44,  actual:.818 }, { mid:.95, n:28,  actual:.929 },
+];
+
+function drawCalib() {
+  const s = setupCanvas('cvCalib'); if (!s) return;
+  const { cx, w, h } = s;
+  const PAD = { l:44, r:16, t:16, b:36 };
+  const pw = w - PAD.l - PAD.r, ph = h - PAD.t - PAD.b;
+  const maxN = Math.max(...CALIB.map(c=>c.n));
+  const N = CALIB.length;
+
+  cx.fillStyle = P.s1; cx.fillRect(0,0,w,h);
+  grid(cx, PAD.l, PAD.t, pw, ph, 5, 5);
+
+  // Axis labels
+  cx.fillStyle = P.dm; cx.font = mono(8);
+  for (let i=0; i<=5; i++) {
+    cx.textAlign = 'right';
+    cx.fillText((100-i*20)+'%', PAD.l-5, PAD.t + ph*i/5 + 3);
+    cx.textAlign = 'center';
+    cx.fillText((i*20)+'%', PAD.l + pw*i/5, h - PAD.b + 13);
+  }
+  cx.fillText('PREDICTED PROBABILITY', PAD.l + pw/2, h-2);
+
+  // Bars (count)
+  const bw = (pw/N)*0.7;
+  CALIB.forEach((c, i) => {
+    const bx = PAD.l + (i/N)*pw + (pw/N)*0.15;
+    const bh = (c.n/maxN)*ph*0.72;
+    const gr = cx.createLinearGradient(0, PAD.t+ph-bh, 0, PAD.t+ph);
+    gr.addColorStop(0, hex2rgba(P.cy,.45)); gr.addColorStop(1, hex2rgba(P.cy,.1));
+    cx.fillStyle = gr;
+    cx.fillRect(bx, PAD.t+ph-bh, bw, bh);
+    cx.fillStyle = P.dm; cx.font = mono(7); cx.textAlign = 'center';
+    cx.fillText(c.n, bx+bw/2, PAD.t+ph-bh-4);
+  });
+
+  // Perfect calibration diagonal
+  cx.beginPath(); cx.strokeStyle = 'rgba(255,255,255,.16)'; cx.setLineDash([5,5]); cx.lineWidth=1;
+  cx.moveTo(PAD.l, PAD.t+ph); cx.lineTo(PAD.l+pw, PAD.t); cx.stroke(); cx.setLineDash([]);
+
+  // Actual attrition rate line
+  cx.beginPath(); cx.strokeStyle = P.rd; cx.lineWidth = 2.5;
+  CALIB.forEach((c, i) => {
+    const cx2 = PAD.l + (i+0.5)*(pw/N);
+    const cy2 = PAD.t + (1-c.actual)*ph;
+    i===0 ? cx.moveTo(cx2,cy2) : cx.lineTo(cx2,cy2);
+  });
+  cx.stroke();
+
+  // Dots + value labels
+  CALIB.forEach((c, i) => {
+    const dotx = PAD.l + (i+0.5)*(pw/N);
+    const doty = PAD.t + (1-c.actual)*ph;
+    cx.beginPath(); cx.arc(dotx, doty, 4, 0, Math.PI*2);
+    cx.fillStyle = P.rd; cx.fill();
+    // Alternating label positions to avoid overlap
+    cx.fillStyle = P.tx; cx.font = mono(8); cx.textAlign = 'center';
+    const loy = i%2===0 ? -9 : 13;
+    cx.fillText((c.actual*100).toFixed(0)+'%', dotx, doty+loy);
+  });
+
+  log('Calibration curve rendered', 'ok');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   6. INCOME vs ATTRITION RISK SCATTER
+══════════════════════════════════════════════════════════════ */
+let _scPts = [], _scHov = -1;
+
+function buildScatter() {
+  // Deterministic "random" so it's consistent on reload
+  const pts = [];
+  let seed = 42;
+  function rng(min, max) {
+    seed = (seed * 16807 + 0) & 0x7fffffff;
+    return min + (seed / 0x7fffffff) * (max - min);
+  }
+  // HIGH risk: low income, high prob, mostly OT
+  for (let i=0; i<65; i++)
+    pts.push({ inc:rng(1500,5200), prob:rng(0.60,0.94), ot:1, risk:'H' });
+  // MEDIUM: mixed income
+  for (let i=0; i<110; i++)
+    pts.push({ inc:rng(2800,9500), prob:rng(0.38,0.70), ot:rng(0,1)>.5?1:0, risk:'M' });
+  // LOW: higher income, some with OT but high pay compensates
+  for (let i=0; i<165; i++)
+    pts.push({ inc:rng(5000,20000), prob:rng(0.03,0.38), ot:0, risk:'L' });
+  // LOW: low income, low prob (non-OT, satisfied)
+  for (let i=0; i<60; i++)
+    pts.push({ inc:rng(2000,6000), prob:rng(0.05,0.32), ot:0, risk:'L' });
+  return pts;
+}
+
+function renderScatter(hovIdx) {
+  const s = setupCanvas('cvScatter'); if (!s) return;
+  const { cx, w, h } = s;
+  const PAD = { l:44, r:16, t:16, b:36 };
+  const pw = w - PAD.l - PAD.r, ph = h - PAD.t - PAD.b;
+  const maxInc = 20000;
+
+  cx.fillStyle = P.s1; cx.fillRect(0,0,w,h);
+  grid(cx, PAD.l, PAD.t, pw, ph, 5, 5);
+
+  // Axis labels
+  cx.fillStyle = P.dm; cx.font = mono(8); cx.textAlign = 'center';
+  for (let i=0; i<=5; i++) {
+    cx.fillText('₹'+(i*4)+' K', PAD.l+pw*i/5, h-PAD.b+13);
+    cx.textAlign='right'; cx.fillText((100-i*20)+'%', PAD.l-5, PAD.t+ph*i/5+3);
+    cx.textAlign='center';
+  }
+
+  // Decision threshold line at 0.35
+  const thy = PAD.t + (1-0.35)*ph;
+  cx.beginPath(); cx.strokeStyle=hex2rgba(P.rd,.28); cx.setLineDash([3,4]); cx.lineWidth=1;
+  cx.moveTo(PAD.l, thy); cx.lineTo(PAD.l+pw, thy); cx.stroke(); cx.setLineDash([]);
+  cx.fillStyle=hex2rgba(P.rd,.55); cx.font=mono(7); cx.textAlign='right';
+  cx.fillText('decision threshold 35%', PAD.l+pw-3, thy-4);
+
+  // Points
+  _scPts.forEach((p, i) => {
+    const px = PAD.l + Math.min(p.inc,maxInc)/maxInc*pw;
+    const py = PAD.t + (1-p.prob)*ph;
+    const col = p.risk==='H' ? P.rd : p.risk==='M' ? P.go : P.gn;
+    const r = i===hovIdx ? 7 : 3.5;
+    cx.beginPath(); cx.arc(px, py, r, 0, Math.PI*2);
+    if (i === hovIdx) {
+      cx.fillStyle = col; cx.fill();
+      cx.strokeStyle = '#fff'; cx.lineWidth = 1.5; cx.stroke();
+    } else {
+      cx.fillStyle = col + '88'; cx.fill();
+    }
+  });
+}
+
+function scHover(e) {
+  const cv = $('cvScatter'); if (!cv || !_scPts.length) return;
+  const rect = cv.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (cv.width / rect.width);
+  const my = (e.clientY - rect.top)  * (cv.height / rect.height);
+  const dpr = window.devicePixelRatio || 1;
+  const mxL = mx/dpr, myL = my/dpr;
+
+  const PAD = { l:44, r:16, t:16, b:36 };
+  const pw = parseFloat(cv.style.width) - PAD.l - PAD.r;
+  const ph = parseFloat(cv.style.height) - PAD.t - PAD.b;
+
+  let best=-1, bestD=18;
+  _scPts.forEach((p, i) => {
+    const px = PAD.l + Math.min(p.inc,20000)/20000*pw;
+    const py = PAD.t + (1-p.prob)*ph;
+    const d = Math.hypot(mxL-px, myL-py);
+    if (d < bestD) { bestD=d; best=i; }
+  });
+
+  if (best !== _scHov) {
+    _scHov = best;
+    renderScatter(_scHov);
+  }
+
+  const tip = $('stip');
+  if (tip && best >= 0) {
+    const p = _scPts[best];
+    const riskStr = p.risk==='H'
+      ? `<span style="color:${P.rd}">HIGH</span>`
+      : p.risk==='M'
+        ? `<span style="color:${P.go}">MEDIUM</span>`
+        : `<span style="color:${P.gn}">LOW</span>`;
+    tip.style.display = 'block';
+    tip.style.left = (e.clientX+14)+'px';
+    tip.style.top  = (e.clientY-36)+'px';
+    tip.innerHTML  =
+      `Income: ₹${Math.round(p.inc).toLocaleString('en-IN')}<br>` +
+      `Attrition prob: ${(p.prob*100).toFixed(1)}%<br>` +
+      `Overtime: ${p.ot?'Yes':'No'}<br>` +
+      `Risk tier: ${riskStr}`;
+  } else if (tip) {
+    tip.style.display = 'none';
+  }
+}
+
+function scLeave() {
+  const tip = $('stip'); if (tip) tip.style.display='none';
+  _scHov = -1;
+  renderScatter(-1);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   7. BUSINESS IMPACT BAR CHART
+══════════════════════════════════════════════════════════════ */
+function drawImpact() {
+  const s = setupCanvas('cvImpact'); if (!s) return;
+  const { cx, w, h } = s;
+  const PAD = { l:44, r:100, t:16, b:32 };
+  const pw = w - PAD.l - PAD.r, ph = h - PAD.t - PAD.b;
+
+  const scenarios = [
+    { l:'Pessimistic\n(30% retained)', v:5.2,  col:P.go },
+    { l:'Realistic\n(50% retained)',   v:8.7,  col:P.cy },
+    { l:'Optimistic\n(70% retained)',  v:12.1, col:P.gn },
+    { l:'Full capture\n(100%)',         v:17.3, col:hex2rgba(P.gn,.55) },
+  ];
+  const maxV = 18;
+  const N = scenarios.length, gw = pw/N;
+  const bw = Math.min(gw*.55, 55);
+
+  cx.fillStyle = P.s1; cx.fillRect(0,0,w,h);
+
+  // Y grid
+  for (let i=0; i<=6; i++) {
+    const y = PAD.t + ph*i/6;
+    cx.strokeStyle = P.b1; cx.lineWidth=1;
+    cx.beginPath(); cx.moveTo(PAD.l,y); cx.lineTo(PAD.l+pw,y); cx.stroke();
+    cx.fillStyle=P.dm; cx.font=mono(8); cx.textAlign='right';
+    cx.fillText('₹'+Math.round(maxV*(1-i/6))+'Cr', PAD.l-5, y+3);
+  }
+
+  scenarios.forEach((sc, i) => {
+    const bx = PAD.l + gw*(i+0.5) - bw/2;
+    const bh = (sc.v/maxV)*ph;
+    const by = PAD.t + ph - bh;
+
+    // Gradient bar
+    const col = sc.col.startsWith('rgba') ? sc.col : sc.col;
+    const gr = cx.createLinearGradient(0, by, 0, PAD.t+ph);
+    gr.addColorStop(0, col); gr.addColorStop(1, hex2rgba(P.s2, .5));
+    cx.fillStyle = gr; cx.fillRect(bx, by, bw, bh);
+
+    // Top glow
+    cx.fillStyle = col.startsWith('rgba') ? col : hex2rgba(col, .25);
+    cx.fillRect(bx, by, bw, 3);
+
+    // Value label above bar
+    cx.fillStyle = sc.col.startsWith('rgba') ? P.gn : sc.col;
+    cx.font = sans(13); cx.textAlign = 'center';
+    cx.fillText('₹'+sc.v+'Cr', bx+bw/2, by-8);
+
+    // X label (multiline)
+    cx.fillStyle = P.dm; cx.font = mono(8); cx.textAlign = 'center';
+    sc.l.split('\n').forEach((ln, li) => {
+      cx.fillText(ln, bx+bw/2, PAD.t+ph+13+li*11);
+    });
+  });
+
+  log('Impact chart rendered', 'ok');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   8. INTERVENTION TIMING DECAY CURVE
+══════════════════════════════════════════════════════════════ */
+const TIMING_PTS = [
+  { wk:'Imm.',  ret:.78 }, { wk:'Wk 1', ret:.74 }, { wk:'Wk 2', ret:.61 },
+  { wk:'Wk 3',  ret:.52 }, { wk:'Wk 4', ret:.43 }, { wk:'Wk 6', ret:.33 },
+  { wk:'Wk 8',  ret:.21 }, { wk:'Wk 12',ret:.11 }, { wk:'No act',ret:.04 },
+];
+
+function drawTiming() {
+  const s = setupCanvas('cvTiming'); if (!s) return;
+  const { cx, w, h } = s;
+  const PAD = { l:44, r:16, t:16, b:32 };
+  const pw = w - PAD.l - PAD.r, ph = h - PAD.t - PAD.b;
+  const N = TIMING_PTS.length;
+
+  cx.fillStyle = P.s1; cx.fillRect(0,0,w,h);
+
+  // Y grid
+  for (let i=0; i<=5; i++) {
+    const y = PAD.t+ph*i/5;
+    cx.strokeStyle=P.b1; cx.lineWidth=1;
+    cx.beginPath(); cx.moveTo(PAD.l,y); cx.lineTo(PAD.l+pw,y); cx.stroke();
+    cx.fillStyle=P.dm; cx.font=mono(8); cx.textAlign='right';
+    cx.fillText((100-i*20)+'%', PAD.l-5, y+3);
+  }
+
+  // Area fill (gradient L→R green→red)
+  cx.beginPath();
+  cx.moveTo(PAD.l, PAD.t+ph);
+  TIMING_PTS.forEach((t,i) => {
+    cx.lineTo(PAD.l + pw*i/(N-1), PAD.t+(1-t.ret)*ph);
+  });
+  cx.lineTo(PAD.l+pw, PAD.t+ph); cx.closePath();
+  const ag = cx.createLinearGradient(PAD.l,0,PAD.l+pw,0);
+  ag.addColorStop(0, hex2rgba(P.gn,.2));
+  ag.addColorStop(.5, hex2rgba(P.cy,.1));
+  ag.addColorStop(1, hex2rgba(P.rd,.08));
+  cx.fillStyle=ag; cx.fill();
+
+  // Line
+  cx.beginPath(); cx.lineWidth=2.5;
+  const lg = cx.createLinearGradient(PAD.l,0,PAD.l+pw,0);
+  lg.addColorStop(0,P.gn); lg.addColorStop(.45,P.cy); lg.addColorStop(.75,P.go); lg.addColorStop(1,P.rd);
+  cx.strokeStyle=lg;
+  TIMING_PTS.forEach((t,i) => {
+    const px=PAD.l+pw*i/(N-1), py=PAD.t+(1-t.ret)*ph;
+    i===0 ? cx.moveTo(px,py) : cx.lineTo(px,py);
+  });
+  cx.stroke();
+
+  // Dots + labels
+  TIMING_PTS.forEach((t,i) => {
+    const px=PAD.l+pw*i/(N-1), py=PAD.t+(1-t.ret)*ph;
+    const col = t.ret>=.60?P.gn : t.ret>=.35?P.cy : t.ret>=.20?P.go : P.rd;
+    cx.beginPath(); cx.arc(px,py,4,0,Math.PI*2); cx.fillStyle=col; cx.fill();
+    cx.fillStyle=P.dm; cx.font=mono(7); cx.textAlign='center';
+    cx.fillText(t.wk, px, PAD.t+ph+14);
+    if ([0,2,4,6,8].includes(i)) {
+      cx.fillStyle=col; cx.font=mono(8);
+      cx.fillText((t.ret*100).toFixed(0)+'%', px, py-9);
+    }
+  });
+
+  log('Timing chart rendered', 'ok');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   9. MODEL EVOLUTION TREND (multi-line)
+══════════════════════════════════════════════════════════════ */
+const MODEL_HIST = [
+  { n:'Decision Tree', acc:.793, auc:.694, rec:.428, f1:.519 },
+  { n:'Rnd Forest',    acc:.851, auc:.782, rec:.513, f1:.617 },
+  { n:'XGB v1',        acc:.863, auc:.811, rec:.541, f1:.638 },
+  { n:'XGB Tuned',     acc:.871, auc:.823, rec:.584, f1:.661 },
+  { n:'XGB v2',        acc:.871, auc:.823, rec:.584, f1:.661 },
+];
+const METRICS = [
+  { k:'acc', col:P.cy,  lbl:'Accuracy' },
+  { k:'auc', col:P.go,  lbl:'ROC AUC'  },
+  { k:'rec', col:P.rd,  lbl:'Recall'   },
+  { k:'f1',  col:P.gn,  lbl:'F1'       },
+];
+
+function drawTrend() {
+  const s = setupCanvas('cvTrend'); if (!s) return;
+  const { cx, w, h } = s;
+  const PAD = { l:48, r:110, t:16, b:36 };
+  const pw = w - PAD.l - PAD.r, ph = h - PAD.t - PAD.b;
+  const N = MODEL_HIST.length, minV=.38, maxV=.92;
+
+  cx.fillStyle = P.s1; cx.fillRect(0,0,w,h);
+
+  // Y grid
+  for (let i=0; i<=6; i++) {
+    const y=PAD.t+ph*i/6, v=maxV-(maxV-minV)*i/6;
+    cx.strokeStyle=P.b1; cx.lineWidth=1;
+    cx.beginPath(); cx.moveTo(PAD.l,y); cx.lineTo(PAD.l+pw,y); cx.stroke();
+    cx.fillStyle=P.dm; cx.font=mono(8); cx.textAlign='right';
+    cx.fillText((v*100).toFixed(0)+'%', PAD.l-5, y+3);
+  }
+
+  // Version labels + shaded current
+  MODEL_HIST.forEach((m,i) => {
+    const x = PAD.l + pw*i/(N-1);
+    cx.strokeStyle=P.b1; cx.lineWidth=1; cx.setLineDash([2,5]);
+    cx.beginPath(); cx.moveTo(x,PAD.t); cx.lineTo(x,PAD.t+ph); cx.stroke(); cx.setLineDash([]);
+    if (i===N-1) {
+      cx.fillStyle='rgba(0,229,255,.04)';
+      cx.fillRect(x-16, PAD.t, 20, ph);
+    }
+    cx.fillStyle = i===N-1?P.cy:P.dm; cx.font = mono(8); cx.textAlign='center';
+    cx.fillText(m.n, x, PAD.t+ph+15);
+  });
+
+  // Metric lines
+  METRICS.forEach(m => {
+    // Subtle fill
+    cx.beginPath(); cx.moveTo(PAD.l, PAD.t+ph);
+    MODEL_HIST.forEach((md,i) => {
+      const x=PAD.l+pw*i/(N-1), v=md[m.k];
+      const y=PAD.t+ph*(1-(v-minV)/(maxV-minV));
+      cx.lineTo(x,y);
+    });
+    cx.lineTo(PAD.l+pw/(N-1)*(N-1)+PAD.l, PAD.t+ph);
+    cx.closePath(); cx.fillStyle = hex2rgba(m.col,.05); cx.fill();
+
+    // Line
+    cx.beginPath(); cx.strokeStyle=m.col; cx.lineWidth=2;
+    MODEL_HIST.forEach((md,i) => {
+      const x=PAD.l+pw*i/(N-1), v=md[m.k];
+      const y=PAD.t+ph*(1-(v-minV)/(maxV-minV));
+      i===0 ? cx.moveTo(x,y) : cx.lineTo(x,y);
+    });
+    cx.stroke();
+
+    // Dots
+    MODEL_HIST.forEach((md,i) => {
+      const x=PAD.l+pw*i/(N-1), v=md[m.k];
+      const y=PAD.t+ph*(1-(v-minV)/(maxV-minV));
+      cx.beginPath(); cx.arc(x,y,4,0,Math.PI*2);
+      cx.fillStyle=m.col; cx.fill();
+      // Value label on dots for first and last
+      if (i===0 || i===N-1) {
+        cx.fillStyle=m.col; cx.font=mono(8); cx.textAlign='center';
+        cx.fillText((v*100).toFixed(1)+'%', x, y-(i===N-1?9:9));
+      }
+    });
+
+    // Right-side metric label
+    const lastV = MODEL_HIST[N-1][m.k];
+    const ly = PAD.t+ph*(1-(lastV-minV)/(maxV-minV));
+    cx.fillStyle=m.col; cx.font=sans(10,600); cx.textAlign='left';
+    cx.fillText(m.lbl+' '+((lastV)*100).toFixed(1)+'%', PAD.l+pw+8, ly+3);
+  });
+
+  log('Trend chart rendered', 'ok');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   HEALTH CHECK
+══════════════════════════════════════════════════════════════ */
+function checkHealth() {
+  fetch('/api/health').then(r=>r.json()).then(h => {
+    const dot=$('stDot'), lbl=$('stLabel');
+    if (!dot || !lbl) return;
+    if (h.ready) {
+      dot.className='dot live'; lbl.textContent='ENDPOINT LIVE'; lbl.style.color='var(--green)';
+    } else if (!h.token_valid) {
+      dot.className='dot dead'; lbl.textContent='TOKEN EXPIRED'; lbl.style.color='var(--red)';
+    } else {
+      dot.className='dot dead'; lbl.textContent='OFFLINE'; lbl.style.color='var(--red)';
+    }
+  }).catch(()=>{});
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════════ */
+window.addEventListener('load', () => {
+  checkHealth();
+  buildFunnel();
+
+  // Build scatter data once
+  _scPts = buildScatter();
+
+  // Stagger chart renders so layout is settled
+  const draws = [
+    ()=>drawROC(_rocT),
+    ()=>drawRadar(),
+    ()=>drawFeature(),
+    ()=>drawCalib(),
+    ()=>renderScatter(-1),
+    ()=>drawImpact(),
+    ()=>drawTiming(),
+    ()=>drawTrend(),
+  ];
+  draws.forEach((fn, i) => setTimeout(fn, 300 + i*80));
+
+  log('All charts initialised', 'ok');
+});
+</script>
+</body>
+</html>
