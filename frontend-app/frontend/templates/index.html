@@ -4,178 +4,588 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>AttritionIQ — Single Predict</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="/static/css/style.css"/>
+<style>
+#loader{animation:loaderHide 0s 1.1s forwards!important}
+@keyframes loaderHide{to{opacity:0;visibility:hidden;display:none!important;pointer-events:none}}
+
+/* Page-specific entrance animations */
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.kpi-card{animation:fadeUp .4s ease both}
+.kpi-card:nth-child(1){animation-delay:.05s}
+.kpi-card:nth-child(2){animation-delay:.1s}
+.kpi-card:nth-child(3){animation-delay:.15s}
+.kpi-card:nth-child(4){animation-delay:.2s}
+
+/* Output tab badge style */
+.out-badge{
+  display:inline-flex;align-items:center;gap:.375rem;
+  background:var(--blue);color:#fff;
+  font-family:var(--mono);font-size:.6rem;font-weight:600;
+  padding:.2rem .6rem;border-radius:99px;letter-spacing:.04em;
+}
+
+/* Progress stat inline (topbar strip) */
+.stat-strip{
+  display:flex;align-items:center;gap:1.25rem;
+  background:var(--blue-light);border:1px solid var(--blue-mid);
+  border-radius:var(--r-sm);padding:.45rem 1rem;
+}
+.stat-strip-item{display:flex;align-items:center;gap:.5rem}
+.stat-strip-lbl{font-size:.6rem;font-family:var(--mono);color:var(--blue);letter-spacing:.05em;text-transform:uppercase}
+.stat-strip-val{font-size:.8rem;font-weight:800;color:var(--blue);letter-spacing:-.02em}
+.stat-strip-div{width:1px;height:20px;background:var(--blue-mid)}
+
+/* Profile table style */
+.profile-table-row{
+  display:grid;
+  grid-template-columns:auto 1fr auto 72px auto;
+  align-items:center;gap:.75rem;
+  padding:.55rem .75rem;
+  border-radius:var(--r-sm);
+  cursor:pointer;
+  transition:background .14s,border .14s;
+  border:1px solid transparent;
+}
+.profile-table-row:hover{background:var(--blue-light);border-color:var(--blue-mid)}
+.profile-table-row + .profile-table-row{margin-top:.25rem}
+.profile-num{
+  width:22px;height:22px;border-radius:50%;
+  background:var(--surface2);border:1px solid var(--border);
+  display:grid;place-items:center;
+  font-size:.58rem;font-family:var(--mono);color:var(--txt4);font-weight:600;
+  flex-shrink:0;
+}
+.profile-risk-bar{height:5px;border-radius:99px;overflow:hidden;background:var(--border);flex:1}
+.profile-risk-fill{height:100%;border-radius:99px}
+.profile-risk-fill.high{background:var(--red)}
+.profile-risk-fill.medium{background:var(--amber)}
+.profile-risk-fill.low{background:var(--green)}
+
+/* Onboarding-style side widget */
+.side-widget{
+  background:var(--blue);
+  border-radius:var(--r-lg);
+  padding:1rem;
+  color:#fff;
+}
+.side-widget-title{font-size:.62rem;font-family:var(--mono);color:rgba(255,255,255,.6);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.625rem}
+.widget-task{
+  display:flex;align-items:center;gap:.625rem;
+  padding:.5rem 0;
+  border-bottom:1px solid rgba(255,255,255,.1);
+}
+.widget-task:last-child{border-bottom:none}
+.widget-task-icon{
+  width:24px;height:24px;border-radius:var(--r-xs);
+  background:rgba(255,255,255,.15);
+  display:grid;place-items:center;font-size:.7rem;flex-shrink:0;
+}
+.widget-task-name{flex:1;font-size:.72rem;font-weight:500;color:rgba(255,255,255,.9)}
+.widget-task-status{
+  font-size:.58rem;font-family:var(--mono);
+  padding:.18rem .45rem;border-radius:99px;
+  background:rgba(255,255,255,.15);color:rgba(255,255,255,.8);
+}
+.widget-task-status.done{background:rgba(16,185,129,.25);color:#6EE7B7}
+.widget-task-status.live{background:rgba(59,130,246,.3);color:#93C5FD}
+
+/* Confidence arc */
+.conf-arc{display:flex;align-items:center;justify-content:center;padding:.5rem 0}
+
+/* Model health bar */
+.health-row{display:flex;align-items:center;gap:.625rem;margin-bottom:.5rem}
+.health-label{font-size:.6rem;font-family:var(--mono);color:var(--txt4);width:72px;flex-shrink:0}
+.health-track{flex:1;height:5px;background:var(--blue-light);border-radius:99px;overflow:hidden}
+.health-fill{height:100%;border-radius:99px;background:var(--blue)}
+.health-val{font-size:.65rem;font-family:var(--mono);color:var(--txt3);width:36px;text-align:right}
+</style>
 </head>
 <body>
 
-<style>
-#loader{animation:loaderHide 0s 1.2s forwards!important;}
-@keyframes loaderHide{to{opacity:0;visibility:hidden;display:none;pointer-events:none;}}
-</style>
 <div id="loader">
   <div class="lb"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
-  <div class="loader-txt">INITIALISING ATTRITIONIQ...</div>
+  <div class="loader-txt">Initialising AttritionIQ...</div>
 </div>
 
-<div class="wrap">
-  <header>
-    <div class="logo">
-      <div class="logo-mark">HR<br>AI</div>
+<div class="app-shell">
+
+  <!-- ═══════════════ SIDEBAR ═══════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-mark">HR<br>AI</div>
       <div>
-        <div class="logo-name">AttritionIQ</div>
-        <div class="logo-sub">MOUSUMI · HR ANALYTICS · SAGEMAKER</div>
-      </div>
-    </div>
-    <div class="header-right">
-      <a href="/" class="nav-link active">PREDICT</a>
-      <a href="/batch" class="nav-link">BATCH</a>
-      <a href="/analytics" class="nav-link">ANALYTICS</a>
-      <a href="/monitor" class="nav-link">MONITOR</a>
-      <div class="status-badge">
-        <div class="dot wait" id="stDot"></div>
-        <span id="stLabel" style="color:var(--gold)">CHECKING...</span>
-      </div>
-    </div>
-  </header>
-
-  <section class="hero">
-    <div class="hero-glow"></div>
-    <div class="eyebrow">PREDICTIVE WORKFORCE INTELLIGENCE</div>
-    <h1>Employee<br><span class="c">Attrition</span><br><span class="r">Detection</span></h1>
-    <p class="hero-sub">
-      XGBoost classifier · 7,470 records · 8 features<br>
-      Live inference via AWS SageMaker ·
-      <span class="ep-name">{{ endpoint_name or "endpoint not set" }}</span>
-    </p>
-  </section>
-
-  <div class="stats">
-    <div class="stat">
-      <div class="stat-label">MODEL ACCURACY</div>
-      <div class="stat-value blue">87.1%</div>
-      <div class="stat-sub">TUNED XGBOOST</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">TRAINING SAMPLES</div>
-      <div class="stat-value" style="color:var(--txt)">7,470</div>
-      <div class="stat-sub">HR ANALYTICS DATASET</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">ATTRITION RATE</div>
-      <div class="stat-value red">16.5%</div>
-      <div class="stat-sub">1,233 / 7,470 EMPLOYEES</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">ROC AUC SCORE</div>
-      <div class="stat-value green">0.823</div>
-      <div class="stat-sub">DISCRIMINATIVE POWER</div>
-    </div>
-  </div>
-
-  <div class="main">
-    <div class="form-panel">
-      <div class="sec-title">PREDICT ATTRITION RISK</div>
-      <div class="form-grid">
-        <div class="field"><label>Age</label><input type="number" id="fAge" value="32" min="18" max="65"/></div>
-        <div class="field"><label>Monthly Income (INR)</label><input type="number" id="fInc" value="5000" min="1000" max="100000"/></div>
-        <div class="field"><label>Years at Company</label><input type="number" id="fYrs" value="5" min="0" max="40"/></div>
-        <div class="field">
-          <label>Job Satisfaction (1-4)</label>
-          <select id="fSat">
-            <option value="1">1 — Very Low</option>
-            <option value="2">2 — Low</option>
-            <option value="3" selected>3 — Medium</option>
-            <option value="4">4 — High</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Works Overtime</label>
-          <select id="fOt"><option value="0">No</option><option value="1">Yes</option></select>
-        </div>
-        <div class="field">
-          <label>Marital Status</label>
-          <select id="fMs"><option value="0">Married / Divorced</option><option value="1">Single</option></select>
-        </div>
-        <div class="field">
-          <label>Gender</label>
-          <select id="fGm"><option value="1">Male</option><option value="0">Female</option></select>
-        </div>
-        <div class="field">
-          <label>High Tenure + Satisfied</label>
-          <select id="fHt"><option value="0">No</option><option value="1">Yes (>=5yr & Sat>=3)</option></select>
-        </div>
-      </div>
-      <button class="predict-btn" id="pBtn" onclick="runPredict()">
-        <span id="bTxt">▶ RUN PREDICTION</span>
-      </button>
-
-      <div class="result-box" id="resBox">
-        <div class="result-label">PREDICTION RESULT</div>
-        <div class="result-verdict" id="rV">—</div>
-        <div class="result-prob" id="rP">—</div>
-        <div class="bar-wrap"><div class="bar-fill" id="rBar" style="width:0%"></div></div>
-        <div class="result-grid">
-          <div class="result-item"><div class="result-item-label">Attrition Prob.</div><div class="result-item-value" id="rA">—</div></div>
-          <div class="result-item"><div class="result-item-label">Retention Prob.</div><div class="result-item-value" id="rR">—</div></div>
-          <div class="result-item"><div class="result-item-label">Risk Level</div><div class="result-item-value" id="rRisk">—</div></div>
-          <div class="result-item"><div class="result-item-label">Inference Mode</div><div class="result-item-value" id="rMode">—</div></div>
-        </div>
+        <div class="sidebar-logo-name">AttritionIQ</div>
+        <div class="sidebar-logo-sub">ML PIPELINE · AWS</div>
       </div>
     </div>
 
-    <div class="profiles-panel">
-      <div class="sec-title">SAMPLE PROFILES</div>
-      <div class="profile-list" id="plist"></div>
-    </div>
-  </div>
+    <div class="sidebar-section-label">Main Menu</div>
+    <nav class="sidebar-nav">
+      <a href="/" class="nav-link active">
+        <div class="nav-icon">🎯</div> Single Predict
+        <span class="nav-chip">LIVE</span>
+      </a>
+      <a href="/batch" class="nav-link">
+        <div class="nav-icon">📋</div> Batch Predict
+      </a>
+      <a href="/analytics" class="nav-link">
+        <div class="nav-icon">📊</div> Analytics
+      </a>
+      <a href="/monitor" class="nav-link">
+        <div class="nav-icon">🔍</div> Monitor
+      </a>
+    </nav>
 
-  <div class="charts">
-    <div class="sec-title">MODEL INSIGHTS</div>
-    <div class="charts-grid">
-      <div class="chart-card">
-        <div class="chart-title">FEATURE IMPORTANCE</div>
-        <div class="feat-list" id="featList"></div>
+    <hr class="sidebar-divider"/>
+
+    <div class="sidebar-section-label">System Status</div>
+    <div class="status-pill">
+      <div class="dot wait" id="stDot"></div>
+      <span id="stLabel" style="color:var(--txt3)">Checking...</span>
+    </div>
+
+    <!-- Model health mini-widget -->
+    <div style="padding:.75rem .75rem .5rem;margin:.25rem .375rem 0;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm)">
+      <div style="font-size:.57rem;font-family:var(--mono);color:var(--txt4);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.625rem">Model Health</div>
+      <div class="health-row">
+        <div class="health-label">Accuracy</div>
+        <div class="health-track"><div class="health-fill" style="width:87.1%"></div></div>
+        <div class="health-val">87.1%</div>
       </div>
-      <div class="chart-card">
-        <div class="chart-title">DATASET DISTRIBUTION</div>
-        <div class="donut-wrap">
-          <svg width="100" height="100" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="38" fill="none" stroke="#1a2535" stroke-width="10"/>
-            <circle cx="50" cy="50" r="38" fill="none" stroke="#ff3d6b" stroke-width="10" stroke-dasharray="0 238.76" id="dAttr" style="transition:stroke-dasharray 1.2s ease"/>
-            <circle cx="50" cy="50" r="38" fill="none" stroke="#a8ff3e" stroke-width="10" stroke-dasharray="238.76 238.76" id="dRet" style="transition:all 1.2s ease"/>
-          </svg>
-          <div class="donut-center"><div class="donut-pct" style="color:var(--red)">16%</div><div class="donut-sub">ATTRITION</div></div>
+      <div class="health-row">
+        <div class="health-label">Recall</div>
+        <div class="health-track"><div class="health-fill" style="width:58.4%;background:var(--green)"></div></div>
+        <div class="health-val" style="color:var(--green)">58.4%</div>
+      </div>
+      <div class="health-row" style="margin-bottom:0">
+        <div class="health-label">AUC-PR</div>
+        <div class="health-track"><div class="health-fill" style="width:71%;background:var(--amber)"></div></div>
+        <div class="health-val" style="color:var(--amber)">0.71</div>
+      </div>
+    </div>
+
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">M</div>
+      <div>
+        <div class="sidebar-user-name">Mousumi</div>
+        <div class="sidebar-user-role">CRP Term 3 · ML Engineer</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════════ MAIN ═══════════════ -->
+  <div class="main-content">
+
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <div>
+          <div class="topbar-greeting">Welcome Back, Mousumi 👋</div>
+          <div class="topbar-breadcrumb">
+            <span>AttritionIQ</span>
+            <span class="topbar-divider">/</span>
+            <span style="color:var(--blue)">Single Prediction</span>
+          </div>
         </div>
-        <div class="donut-legend">
-          <div class="donut-legend-item"><div class="legend-dot" style="background:var(--red)"></div>Attrition — 1,233 (16.5%)</div>
-          <div class="donut-legend-item"><div class="legend-dot" style="background:var(--green)"></div>Retained — 6,237 (83.5%)</div>
+      </div>
+      <div class="topbar-right">
+        <div class="stat-strip">
+          <div class="stat-strip-item">
+            <div class="stat-strip-lbl">Output</div>
+            <div class="stat-strip-val">87%</div>
+          </div>
+          <div class="stat-strip-div"></div>
+          <div class="stat-strip-item">
+            <div class="stat-strip-lbl">Employees</div>
+            <div class="stat-strip-val">7,470</div>
+          </div>
+          <div class="stat-strip-div"></div>
+          <div class="stat-strip-item">
+            <div class="stat-strip-lbl">At Risk</div>
+            <div class="stat-strip-val">1,233</div>
+          </div>
+        </div>
+        <div class="topbar-icon-btn" title="Notifications">🔔</div>
+        <div class="topbar-icon-btn" title="Settings">⚙️</div>
+        <div class="topbar-avatar">M</div>
+      </div>
+    </div>
+
+    <!-- PAGE TABS -->
+    <div class="page-tabs">
+      <a class="page-tab active" href="/">🎯 Single Predict</a>
+      <a class="page-tab" href="/batch">📋 Batch Predict</a>
+      <a class="page-tab" href="/analytics">📊 Analytics</a>
+      <a class="page-tab" href="/monitor">🔍 Monitor</a>
+      <div style="margin-left:auto;display:flex;align-items:center;padding-right:.5rem">
+        <div class="out-badge">XGBoost v2 · Threshold 0.35</div>
+      </div>
+    </div>
+
+    <!-- PAGE CONTENT -->
+    <div class="page-content">
+
+      <!-- ── KPI CARDS ── -->
+      <div class="kpi-row">
+        <div class="kpi-card blue">
+          <div class="kpi-left">
+            <div class="kpi-label">Model Accuracy</div>
+            <div class="kpi-value blue">87.1%</div>
+            <div class="kpi-sub">Tuned XGBoost v2</div>
+            <div class="kpi-trend up">↑ +3.2% vs baseline DT</div>
+          </div>
+          <div class="kpi-icon blue">🎯</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-left">
+            <div class="kpi-label">Training Samples</div>
+            <div class="kpi-value">7,470</div>
+            <div class="kpi-sub">IBM HR Analytics dataset</div>
+            <div class="kpi-trend up">↑ Expanded 5× from 1,470</div>
+          </div>
+          <div class="kpi-icon green">📦</div>
+        </div>
+        <div class="kpi-card red">
+          <div class="kpi-left">
+            <div class="kpi-label">Attrition Rate</div>
+            <div class="kpi-value red">16.5%</div>
+            <div class="kpi-sub">1,233 / 7,470 employees</div>
+            <div class="kpi-trend down">⚠ Class imbalance 5.06:1</div>
+          </div>
+          <div class="kpi-icon red">⚠️</div>
+        </div>
+        <div class="kpi-card amber">
+          <div class="kpi-left">
+            <div class="kpi-label">Avg Precision (AUC-PR)</div>
+            <div class="kpi-value amber">0.71</div>
+            <div class="kpi-sub">True imbalance metric</div>
+            <div class="kpi-trend up">↑ ROC AUC 0.823</div>
+          </div>
+          <div class="kpi-icon amber">📈</div>
         </div>
       </div>
-      <div class="chart-card">
-        <div class="chart-title">RISK BY JOB SATISFACTION</div>
-        <div class="bar-chart" id="barChart"></div>
+
+      <!-- ── PREDICT + PROFILES ── -->
+      <div class="predict-layout">
+
+        <!-- LEFT: FORM CARD -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-head-left">
+              <div class="card-head-title">Run Attrition Prediction</div>
+              <div class="card-head-sub">Enter employee profile · Live SageMaker inference · ap-south-1</div>
+            </div>
+            <div class="card-badge">8 FEATURES</div>
+          </div>
+          <div class="form-panel">
+
+            <!-- Demographics section -->
+            <div class="form-section-header">
+              <div class="form-section-icon">👤</div>
+              <div class="form-section-label">Demographics</div>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label>Age</label>
+                <input type="number" id="fAge" value="32" min="18" max="65"/>
+              </div>
+              <div class="field">
+                <label>Monthly Income (₹)</label>
+                <input type="number" id="fInc" value="5000" min="1000" max="100000"/>
+              </div>
+              <div class="field">
+                <label>Gender</label>
+                <select id="fGm">
+                  <option value="1">Male</option>
+                  <option value="0">Female</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Marital Status</label>
+                <select id="fMs">
+                  <option value="0">Married / Divorced</option>
+                  <option value="1">Single</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Work Profile section -->
+            <div class="form-section-header">
+              <div class="form-section-icon">💼</div>
+              <div class="form-section-label">Work Profile</div>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label>Years at Company</label>
+                <input type="number" id="fYrs" value="5" min="0" max="40"/>
+              </div>
+              <div class="field">
+                <label>Job Satisfaction (1–4)</label>
+                <select id="fSat">
+                  <option value="1">1 — Very Low</option>
+                  <option value="2">2 — Low</option>
+                  <option value="3" selected>3 — Medium</option>
+                  <option value="4">4 — High</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Works Overtime</label>
+                <select id="fOt">
+                  <option value="0">No</option>
+                  <option value="1">Yes</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>High Tenure + Satisfied</label>
+                <select id="fHt">
+                  <option value="0">No</option>
+                  <option value="1">Yes (≥5yr &amp; Sat≥3)</option>
+                </select>
+              </div>
+            </div>
+
+            <button class="predict-btn" id="pBtn" onclick="runPredict()">
+              <span id="bTxt">▶ Run Prediction</span>
+            </button>
+
+            <!-- Result box -->
+            <div class="result-box" id="resBox">
+              <div class="result-label">Prediction Result · {{ endpoint_name or "fallback mode" }}</div>
+              <div class="result-verdict" id="rV">—</div>
+              <div class="result-prob" id="rP">—</div>
+              <div class="bar-wrap"><div class="bar-fill" id="rBar" style="width:0%"></div></div>
+              <div class="result-grid">
+                <div class="result-item">
+                  <div class="result-item-label">Attrition Prob.</div>
+                  <div class="result-item-value" id="rA">—</div>
+                </div>
+                <div class="result-item">
+                  <div class="result-item-label">Retention Prob.</div>
+                  <div class="result-item-value" id="rR">—</div>
+                </div>
+                <div class="result-item">
+                  <div class="result-item-label">Risk Level</div>
+                  <div class="result-item-value" id="rRisk">—</div>
+                </div>
+                <div class="result-item">
+                  <div class="result-item-label">Inference Mode</div>
+                  <div class="result-item-value" id="rMode">—</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- RIGHT: PROFILES + WIDGET COLUMN -->
+        <div style="display:flex;flex-direction:column;gap:1rem">
+
+          <!-- Sample Profiles card -->
+          <div class="card" style="flex:1">
+            <div class="card-head">
+              <div class="card-head-left">
+                <div class="card-head-title">Sample Employee Profiles</div>
+                <div class="card-head-sub">Click any row to auto-fill and predict</div>
+              </div>
+              <div class="card-badge">5 PROFILES</div>
+            </div>
+            <div style="padding:.875rem">
+              <!-- Table header -->
+              <div style="display:grid;grid-template-columns:auto 1fr auto 72px auto;gap:.75rem;padding:.25rem .75rem;margin-bottom:.25rem">
+                <div style="width:22px"></div>
+                <div style="font-size:.57rem;font-family:var(--mono);color:var(--txt5);letter-spacing:.1em;text-transform:uppercase">Employee Profile</div>
+                <div style="font-size:.57rem;font-family:var(--mono);color:var(--txt5);letter-spacing:.1em;text-transform:uppercase">Risk</div>
+                <div style="font-size:.57rem;font-family:var(--mono);color:var(--txt5);letter-spacing:.1em;text-transform:uppercase">Attrition</div>
+                <div style="font-size:.57rem;font-family:var(--mono);color:var(--txt5);letter-spacing:.1em;text-transform:uppercase;width:36px">%</div>
+              </div>
+              <div class="profile-list" id="plist"></div>
+            </div>
+          </div>
+
+          <!-- Pipeline Task widget (like Onboarding Tasks in reference) -->
+          <div class="side-widget">
+            <div class="side-widget-title">Pipeline Tasks</div>
+            <div class="widget-task">
+              <div class="widget-task-icon">📥</div>
+              <div class="widget-task-name">Data Download</div>
+              <div class="widget-task-status done">Done</div>
+            </div>
+            <div class="widget-task">
+              <div class="widget-task-icon">⚙️</div>
+              <div class="widget-task-name">Preprocessing + SMOTE</div>
+              <div class="widget-task-status done">Done</div>
+            </div>
+            <div class="widget-task">
+              <div class="widget-task-icon">🧠</div>
+              <div class="widget-task-name">XGBoost v2 Training</div>
+              <div class="widget-task-status done">Done</div>
+            </div>
+            <div class="widget-task">
+              <div class="widget-task-icon">📊</div>
+              <div class="widget-task-name">Model Evaluation</div>
+              <div class="widget-task-status done">Done</div>
+            </div>
+            <div class="widget-task">
+              <div class="widget-task-icon">🚀</div>
+              <div class="widget-task-name">SageMaker Endpoint</div>
+              <div class="widget-task-status live">Live</div>
+            </div>
+            <div class="widget-task">
+              <div class="widget-task-icon">🔍</div>
+              <div class="widget-task-name">Drift Monitoring</div>
+              <div class="widget-task-status live">Active</div>
+            </div>
+          </div>
+
+        </div>
+
+      </div><!-- /predict-layout -->
+
+      <!-- ── MODEL INSIGHTS ── -->
+      <div class="sec-title">
+        <div class="sec-title-dot"></div>
+        Model Insights
+        <div class="sec-title-line"></div>
+        <div style="font-size:.6rem;font-family:var(--mono);color:var(--txt4);font-weight:400;text-transform:none;letter-spacing:0">XGBoost v2 · IBM HR Analytics · 8 features · scale_pos_weight 5.06</div>
       </div>
-    </div>
-  </div>
 
-  <div class="log-section">
-    <div class="sec-title">SYSTEM LOG</div>
-    <div class="terminal" id="term">
-      <div class="log-line inf">[SYSTEM] AttritionIQ v2.0 — Mousumi HR Analytics</div>
-      <div class="log-line">[INFO] Endpoint: {{ endpoint_name or "NOT SET" }} · Region: {{ region }}</div>
-    </div>
-  </div>
+      <div class="insights-grid">
+        <div class="chart-card">
+          <div class="chart-head">
+            <div>
+              <div class="chart-title">Feature Importance</div>
+              <div class="chart-sub">XGBoost v2 · ranked by gain</div>
+            </div>
+            <div class="card-badge">8 FEATURES</div>
+          </div>
+          <div class="chart-body">
+            <div class="feat-list" id="featList"></div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-head">
+            <div>
+              <div class="chart-title">Dataset Distribution</div>
+              <div class="chart-sub">7,470 employees · 16.5% attrition</div>
+            </div>
+          </div>
+          <div class="chart-body" style="display:flex;flex-direction:column;align-items:center">
+            <div class="donut-wrap">
+              <svg width="96" height="96" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="38" fill="none" stroke="var(--blue-mid)" stroke-width="10"/>
+                <circle cx="50" cy="50" r="38" fill="none" stroke="var(--red2)" stroke-width="10"
+                  stroke-dasharray="0 238.76" id="dAttr" style="transition:stroke-dasharray 1.3s cubic-bezier(.4,0,.2,1)"/>
+                <circle cx="50" cy="50" r="38" fill="none" stroke="var(--blue)" stroke-width="10"
+                  stroke-dasharray="238.76 238.76" id="dRet" style="transition:all 1.3s cubic-bezier(.4,0,.2,1)"/>
+              </svg>
+              <div class="donut-center">
+                <div class="donut-pct" style="color:var(--red)">16%</div>
+                <div class="donut-sub">Attrition</div>
+              </div>
+            </div>
+            <div class="donut-legend">
+              <div class="donut-legend-item"><div class="legend-dot" style="background:var(--red2)"></div>Attrition — 1,233 (16.5%)</div>
+              <div class="donut-legend-item"><div class="legend-dot" style="background:var(--blue)"></div>Retained — 6,237 (83.5%)</div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-head">
+            <div>
+              <div class="chart-title">Risk by Job Satisfaction</div>
+              <div class="chart-sub">Attrition rate per satisfaction level</div>
+            </div>
+          </div>
+          <div class="chart-body">
+            <div class="bar-chart" id="barChart"></div>
+          </div>
+        </div>
+      </div>
 
-  <footer>
-    <div class="footer-txt">© 2026 MOUSUMI · ML PIPELINE · GITHUB ACTIONS + SAGEMAKER + DOCKER</div>
-    <div class="footer-tags">
-      <div class="tag">XGBOOST</div><div class="tag">SAGEMAKER</div>
-      <div class="tag">DOCKER</div><div class="tag">AWS</div>
-    </div>
-  </footer>
-</div>
+      <!-- ── SYSTEM LOG ── -->
+      <div class="log-section">
+        <div class="log-section-head">
+          <div class="sec-title" style="margin-bottom:0">
+            <div class="sec-title-dot"></div>System Log
+          </div>
+          <div style="font-size:.6rem;font-family:var(--mono);color:var(--txt4)">{{ endpoint_name or "endpoint not set" }} · {{ region }}</div>
+        </div>
+        <div class="terminal" id="term">
+          <div class="log-line inf">[SYSTEM] AttritionIQ v2.0 — Mousumi HR Analytics Pipeline</div>
+          <div class="log-line">[INFO] Endpoint: {{ endpoint_name or "NOT SET" }} · Region: {{ region }}</div>
+        </div>
+      </div>
 
+    </div><!-- /page-content -->
+
+    <footer>
+      <div class="footer-txt">© 2026 MOUSUMI · ML PIPELINE · GITHUB ACTIONS + SAGEMAKER + DOCKER</div>
+      <div class="footer-tags">
+        <div class="tag">XGBOOST</div>
+        <div class="tag">SAGEMAKER</div>
+        <div class="tag">DOCKER</div>
+        <div class="tag">AWS</div>
+        <div class="tag">IMBALANCE-AWARE</div>
+        <div class="tag">SMOTE</div>
+      </div>
+    </footer>
+
+  </div><!-- /main-content -->
+</div><!-- /app-shell -->
+
+<script>
+/* ── Inline profile renderer override for new table style ── */
+const _SAMPLES = [
+  {name:"OT + Single + Sat1 (Very High)", feat:[0,1,24,2800,1,1,1,1]},
+  {name:"OT + Sat2 + Low Pay",            feat:[0,1,29,3800,1,1,3,2]},
+  {name:"Average Mid-Career",             feat:[0,0,35,5500,0,0,5,3]},
+  {name:"Senior · No OT · Satisfied",    feat:[1,0,45,9000,0,0,15,4]},
+  {name:"Tenured Expert 20yr",           feat:[1,0,52,14000,0,1,20,4]},
+];
+function sig(x){return 1/(1+Math.exp(-x))}
+function approxLocal(f){
+  const [ht,ot,age,inc,ms,gm,yr,sat]=f;
+  let s=-1.65;
+  if(ot===1) s+=2.10; if(ms===1) s+=0.95;
+  s+=(2.5-sat)*0.75;
+  s-=Math.min(inc,20000)/20000*3.00;
+  s-=Math.min(yr,20)/20*2.20;
+  s-=Math.min(Math.max(age-18,0),32)/32*0.80;
+  if(ht===1) s-=1.30; if(gm===1) s-=0.15;
+  const p=Math.min(0.96,Math.max(0.04,sig(s)));
+  return{attrition_probability:+p.toFixed(5),prediction:p>=0.5?1:0};
+}
+function renderProfilesNew(){
+  const list=document.getElementById('plist'); if(!list) return;
+  _SAMPLES.forEach((s,i)=>{
+    const r=approxLocal(s.feat);
+    const pct=(r.attrition_probability*100).toFixed(0);
+    const cls=r.prediction===1?(pct>65?'high':'medium'):'low';
+    const riskLabel=cls==='high'?'HIGH':cls==='medium'?'MED':'LOW';
+    const riskColor=cls==='high'?'var(--red)':cls==='medium'?'var(--amber)':'var(--green)';
+    const riskBg=cls==='high'?'var(--red-light)':cls==='medium'?'var(--amber-light)':'var(--green-light)';
+    const d=document.createElement('div');
+    d.className='profile-table-row';
+    d.innerHTML=`
+      <div class="profile-num">${i+1}</div>
+      <div class="profile-name" style="font-size:.74rem;font-weight:500;color:var(--txt)">${s.name}</div>
+      <div style="font-size:.6rem;font-family:var(--mono);font-weight:600;padding:.18rem .5rem;border-radius:99px;background:${riskBg};color:${riskColor}">${riskLabel}</div>
+      <div class="profile-risk-bar"><div class="profile-risk-fill ${cls}" style="width:${pct}%"></div></div>
+      <div class="profile-pct" style="font-size:.7rem;font-family:var(--mono);font-weight:700;color:${riskColor}">${pct}%</div>`;
+    d.onclick=()=>{
+      const[ht,ot,age,inc,ms,gm,yr,sat]=s.feat;
+      document.getElementById('fHt').value=ht; document.getElementById('fOt').value=ot;
+      document.getElementById('fAge').value=age; document.getElementById('fInc').value=inc;
+      document.getElementById('fMs').value=ms; document.getElementById('fGm').value=gm;
+      document.getElementById('fYrs').value=yr; document.getElementById('fSat').value=sat;
+      runPredict();
+    };
+    list.appendChild(d);
+  });
+}
+window.addEventListener('DOMContentLoaded',()=>{ renderProfilesNew(); });
+</script>
 <script src="/static/js/app.js"></script>
 </body>
 </html>

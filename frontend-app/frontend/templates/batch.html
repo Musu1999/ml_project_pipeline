@@ -153,43 +153,53 @@ textarea#bInput:focus{border-color:var(--cyan) !important;}
   <div class="loader-txt">LOADING BATCH MODULE...</div>
 </div>
 
-<div class="wrap">
-  <header>
-    <div class="logo">
-      <div class="logo-mark">HR<br>AI</div>
+<div class="app-shell">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-mark">HR<br>AI</div>
       <div>
-        <div class="logo-name">AttritionIQ</div>
-        <div class="logo-sub">MOUSUMI · HR ANALYTICS · SAGEMAKER</div>
+        <div class="sidebar-logo-name">AttritionIQ</div>
+        <div class="sidebar-logo-sub">ML PIPELINE · AWS</div>
       </div>
     </div>
-    <div class="header-right">
-      <a href="/" class="nav-link">PREDICT</a>
-      <a href="/batch" class="nav-link active">BATCH</a>
-      <a href="/analytics" class="nav-link">ANALYTICS</a>
-      <a href="/monitor" class="nav-link">MONITOR</a>
-      <div class="status-badge">
-        <div class="dot wait" id="stDot"></div>
-        <span id="stLabel" style="color:var(--gold)">CHECKING...</span>
+    <div class="sidebar-section-label">Navigation</div>
+    <a href="/" class="nav-link"><span class="nav-icon">🎯</span> Single Predict</a>
+    <a href="/batch" class="nav-link active"><span class="nav-icon">📋</span> Batch Predict</a>
+    <a href="/analytics" class="nav-link"><span class="nav-icon">📊</span> Analytics</a>
+    <a href="/monitor" class="nav-link"><span class="nav-icon">🔍</span> Monitor</a>
+    <div class="sidebar-section-label">System</div>
+    <div class="status-pill">
+      <div class="dot wait" id="stDot"></div>
+      <span id="stLabel">Checking...</span>
+    </div>
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-txt">Mousumi · CRP Term 3<br>XGBoost v2 · SageMaker<br>ap-south-1</div>
+    </div>
+  </aside>
+
+  <!-- ── Main content ── -->
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title">Quarterly Batch Analysis</div>
+        <div class="topbar-sub">{{ endpoint_name or "endpoint not configured" }} · Score up to 1,000 employees at once</div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-badge"><span>📁</span> CSV · JSON · Up to 1,000 rows</div>
+        <div class="avatar">M</div>
       </div>
     </div>
-  </header>
 
-  <section class="hero">
-    <div class="hero-glow"></div>
-    <div class="eyebrow">QUARTERLY WORKFORCE INTELLIGENCE</div>
-    <h1>Batch<br><span class="c">Attrition</span><br><span class="r">Analysis</span></h1>
-    <p class="hero-sub">
-      Upload your quarterly HR CSV or paste JSON to score up to 1,000 employees at once.<br>
-      Results archived to S3 · Endpoint: <span class="ep-name">{{ endpoint_name or "not configured" }}</span>
-    </p>
-  </section>
+    <div class="page-content">
 
-  <div class="stats">
-    <div class="stat"><div class="stat-label">MAX BATCH SIZE</div><div class="stat-value blue">1,000</div><div class="stat-sub">EMPLOYEES PER UPLOAD</div></div>
-    <div class="stat"><div class="stat-label">INPUT FORMATS</div><div class="stat-value" style="color:var(--txt)">CSV · JSON</div><div class="stat-sub">QUARTERLY UPLOADS</div></div>
-    <div class="stat"><div class="stat-label">FEATURE COUNT</div><div class="stat-value" style="color:var(--gold)">8</div><div class="stat-sub">XGBOOST FEATURES</div></div>
-    <div class="stat"><div class="stat-label">MODEL ACCURACY</div><div class="stat-value green">87.1%</div><div class="stat-sub">ROC AUC 0.823</div></div>
-  </div>
+      <div class="kpi-row" style="margin-bottom:1.5rem">
+        <div class="kpi-card"><div class="kpi-left"><div class="kpi-label">Max Batch Size</div><div class="kpi-value blue">1,000</div><div class="kpi-sub">Employees per upload</div></div><div class="kpi-icon blue">📦</div></div>
+        <div class="kpi-card"><div class="kpi-left"><div class="kpi-label">Input Formats</div><div class="kpi-value" style="font-size:1.2rem">CSV · JSON</div><div class="kpi-sub">Quarterly uploads</div></div><div class="kpi-icon blue">📁</div></div>
+        <div class="kpi-card"><div class="kpi-left"><div class="kpi-label">Feature Count</div><div class="kpi-value amber">8</div><div class="kpi-sub">XGBoost features</div></div><div class="kpi-icon amber">⚙️</div></div>
+        <div class="kpi-card"><div class="kpi-left"><div class="kpi-label">Model Accuracy</div><div class="kpi-value green">87.1%</div><div class="kpi-sub">ROC AUC 0.823</div></div><div class="kpi-icon green">🎯</div></div>
+      </div>
 
   <div class="batch-outer">
 
@@ -393,7 +403,8 @@ textarea#bInput:focus{border-color:var(--cyan) !important;}
       <div class="tag">S3 ARCHIVE</div>
     </div>
   </footer>
-</div>
+  </div><!-- /main-content -->
+</div><!-- /app-shell -->
 
 <script>
 // ── Constants ────────────────────────────────────────────────────

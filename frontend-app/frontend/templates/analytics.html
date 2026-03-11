@@ -4,30 +4,26 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>AttritionIQ — Analytics</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="/static/css/style.css"/>
 <style>
-/* ── page chrome ───────────────────────────────────────────── */
 #loader{animation:lhide 0s 1.1s forwards!important;}
 @keyframes lhide{to{opacity:0;visibility:hidden;display:none!important;pointer-events:none;}}
 
-.page{padding:2rem 3rem 3rem;}
+.page{padding:0;}
 
-/* ── KPI strip ─────────────────────────────────────────────── */
-.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:.9rem;margin-bottom:2rem;}
-.kpi{background:var(--s1);border:1px solid var(--b1);padding:1.3rem 1.1rem;
-     position:relative;overflow:hidden;transition:border-color .3s;}
-.kpi::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;
-  transform:scaleX(0);transform-origin:left;transition:transform .45s;}
-.kpi:hover::after{transform:scaleX(1);}
-.kpi.c::after{background:var(--cyan);}  .kpi.r::after{background:var(--red);}
-.kpi.g::after{background:var(--green);} .kpi.o::after{background:var(--gold);}
-.kpi.d::after{background:var(--dim);}
-.kpi-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:.15em;
-  text-transform:uppercase;margin-bottom:.45rem;}
-.kpi-num{font-size:1.85rem;font-weight:800;letter-spacing:-.04em;line-height:1;margin-bottom:.25rem;}
-.kpi-sub{font-family:var(--mono);font-size:9px;color:var(--dim);}
-.kpi-tag{font-family:var(--mono);font-size:9px;margin-top:.35rem;}
+/* KPI strip */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:.875rem;margin-bottom:1.5rem;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+     padding:1.1rem;box-shadow:var(--shadow-sm);transition:box-shadow .2s,transform .2s;}
+.kpi:hover{box-shadow:var(--shadow);transform:translateY(-1px);}
+.kpi-lbl{font-size:.62rem;font-family:var(--mono);color:var(--txt3);letter-spacing:.1em;
+  text-transform:uppercase;margin-bottom:.4rem;}
+.kpi-num{font-size:1.65rem;font-weight:800;letter-spacing:-.04em;line-height:1;margin-bottom:.2rem;}
+.kpi-sub{font-size:.62rem;font-family:var(--mono);color:var(--txt4);}
+.kpi-tag{font-size:.6rem;font-family:var(--mono);margin-top:.3rem;}
+.kpi.c .kpi-num{color:var(--blue);}  .kpi.r .kpi-num{color:var(--red);}
+.kpi.g .kpi-num{color:var(--green);} .kpi.o .kpi-num{color:var(--amber);}
+.kpi.d .kpi-num{color:var(--txt3);}
 
 /* ── chart grid ────────────────────────────────────────────── */
 .row{display:grid;gap:1.25rem;margin-bottom:1.25rem;}
@@ -35,65 +31,65 @@
 .r3{grid-template-columns:3fr 2fr;}
 .r1{grid-template-columns:1fr;}
 
-.card{background:var(--s1);border:1px solid var(--b1);padding:1.4rem;position:relative;}
-.ctitle{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.18em;
+.card{background:var(--surface);border:1px solid var(--border);padding:1.4rem;position:relative;}
+.ctitle{font-family:var(--mono);font-size:9px;color:var(--txt3);letter-spacing:.18em;
   text-transform:uppercase;margin-bottom:.2rem;display:flex;align-items:center;justify-content:space-between;}
-.csub{font-family:var(--mono);font-size:8px;color:var(--dim);opacity:.55;margin-bottom:1.1rem;}
+.csub{font-family:var(--mono);font-size:8px;color:var(--txt3);opacity:.55;margin-bottom:1.1rem;}
 canvas{display:block;width:100%!important;}
 
 /* badges */
 .badge{font-family:var(--mono);font-size:8px;padding:.15rem .5rem;border:1px solid;flex-shrink:0;}
-.bc{color:var(--cyan);border-color:rgba(0,229,255,.3);}
+.bc{color:var(--blue2);border-color:rgba(0,229,255,.3);}
 .bg{color:var(--green);border-color:rgba(168,255,62,.3);}
-.bo{color:var(--gold);border-color:rgba(255,209,102,.3);}
+.bo{color:var(--amber);border-color:rgba(255,209,102,.3);}
 .br{color:var(--red);border-color:rgba(255,61,107,.3);}
 
 /* ── funnel ────────────────────────────────────────────────── */
 .funnel{display:flex;flex-direction:column;gap:.5rem;}
 .frow{display:flex;align-items:center;gap:.8rem;}
-.fbar{flex:1;height:42px;background:var(--s2);position:relative;overflow:hidden;}
+.fbar{flex:1;height:42px;background:var(--surface2);position:relative;overflow:hidden;}
 .ffill{position:absolute;top:0;bottom:0;left:0;width:0;transition:width 1.5s cubic-bezier(.4,0,.2,1);}
 .fname{position:absolute;left:.7rem;top:50%;transform:translateY(-50%);
   font-family:var(--mono);font-size:10px;font-weight:700;z-index:1;}
 .fnum{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);
   font-family:var(--mono);font-size:10px;z-index:1;color:var(--txt);}
 .fpct{font-family:var(--mono);font-size:9px;width:44px;text-align:right;flex-shrink:0;}
-.farrow{font-family:var(--mono);font-size:8px;color:var(--dim);padding-left:44px;}
+.farrow{font-family:var(--mono);font-size:8px;color:var(--txt3);padding-left:44px;}
 
 /* ── roc slider ────────────────────────────────────────────── */
 .roc-ctrl{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap;}
-.roc-ctrl span{font-family:var(--mono);font-size:9px;color:var(--dim);}
-input[type=range]{-webkit-appearance:none;appearance:none;height:3px;background:var(--b1);flex:1;max-width:160px;outline:none;}
+.roc-ctrl span{font-family:var(--mono);font-size:9px;color:var(--txt3);}
+input[type=range]{-webkit-appearance:none;appearance:none;height:3px;background:var(--border);flex:1;max-width:160px;outline:none;}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:12px;height:12px;
-  border-radius:50%;background:var(--cyan);cursor:pointer;}
+  border-radius:50%;background:var(--blue2);cursor:pointer;}
 
 /* ── radar legend ──────────────────────────────────────────── */
 .rl{display:flex;flex-direction:column;gap:.55rem;padding-left:.5rem;}
-.rli{display:flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:9px;color:var(--dim);}
+.rli{display:flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:9px;color:var(--txt3);}
 .rld{width:18px;height:3px;flex-shrink:0;}
-.rli-note{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:.6rem;line-height:1.65;}
+.rli-note{font-family:var(--mono);font-size:8px;color:var(--txt3);margin-top:.6rem;line-height:1.65;}
 
 /* ── calib legend ──────────────────────────────────────────── */
 .cleg{display:flex;gap:1.25rem;margin-top:.6rem;}
-.cleg-item{display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:8px;color:var(--dim);}
+.cleg-item{display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:8px;color:var(--txt3);}
 .cleg-line{width:18px;height:2px;}
 
 /* ── impact scenario cards ─────────────────────────────────── */
 .scenarios{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-top:.75rem;}
-.sc{background:var(--s2);padding:.9rem;}
-.sc-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.35rem;}
+.sc{background:var(--surface2);padding:.9rem;}
+.sc-lbl{font-family:var(--mono);font-size:8px;color:var(--txt3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.35rem;}
 .sc-num{font-size:1.45rem;font-weight:800;letter-spacing:-.03em;}
-.sc-desc{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:.2rem;line-height:1.5;}
+.sc-desc{font-family:var(--mono);font-size:8px;color:var(--txt3);margin-top:.2rem;line-height:1.5;}
 
 /* ── intervention timing cells ─────────────────────────────── */
 .timing{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-top:.75rem;}
-.tc{background:var(--s2);padding:.9rem;text-align:center;}
-.tc-wk{font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.3rem;}
+.tc{background:var(--surface2);padding:.9rem;text-align:center;}
+.tc-wk{font-family:var(--mono);font-size:8px;color:var(--txt3);margin-bottom:.3rem;}
 .tc-val{font-size:1.4rem;font-weight:800;letter-spacing:-.03em;}
-.tc-sub{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:.2rem;}
+.tc-sub{font-family:var(--mono);font-size:8px;color:var(--txt3);margin-top:.2rem;}
 
 /* ── scatter tooltip ────────────────────────────────────────── */
-#stip{position:fixed;background:var(--s1);border:1px solid var(--b1);
+#stip{position:fixed;background:var(--surface);border:1px solid var(--border);
   font-family:var(--mono);font-size:9px;padding:.5rem .75rem;pointer-events:none;
   z-index:999;display:none;line-height:1.65;min-width:140px;}
 </style>
@@ -107,40 +103,46 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
   <div class="loader-txt">LOADING ANALYTICS...</div>
 </div>
 
-<div class="wrap">
-  <!-- ── HEADER ── -->
-  <header>
-    <div class="logo">
-      <div class="logo-mark">HR<br>AI</div>
+<div class="app-shell">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-mark">HR<br>AI</div>
       <div>
-        <div class="logo-name">AttritionIQ</div>
-        <div class="logo-sub">MOUSUMI · HR ANALYTICS · SAGEMAKER</div>
+        <div class="sidebar-logo-name">AttritionIQ</div>
+        <div class="sidebar-logo-sub">ML PIPELINE · AWS</div>
       </div>
     </div>
-    <div class="header-right">
-      <a href="/" class="nav-link">PREDICT</a>
-      <a href="/batch" class="nav-link">BATCH</a>
-      <a href="/analytics" class="nav-link active">ANALYTICS</a>
-      <a href="/monitor" class="nav-link">MONITOR</a>
-      <div class="status-badge">
-        <div class="dot wait" id="stDot"></div>
-        <span id="stLabel" style="color:var(--gold)">CHECKING…</span>
+    <div class="sidebar-section-label">Navigation</div>
+    <a href="/" class="nav-link"><span class="nav-icon">🎯</span> Single Predict</a>
+    <a href="/batch" class="nav-link"><span class="nav-icon">📋</span> Batch Predict</a>
+    <a href="/analytics" class="nav-link active"><span class="nav-icon">📊</span> Analytics</a>
+    <a href="/monitor" class="nav-link"><span class="nav-icon">🔍</span> Monitor</a>
+    <div class="sidebar-section-label">System</div>
+    <div class="status-pill">
+      <div class="dot wait" id="stDot"></div>
+      <span id="stLabel">Checking…</span>
+    </div>
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-txt">Mousumi · CRP Term 3<br>XGBoost v2 · SageMaker<br>ap-south-1</div>
+    </div>
+  </aside>
+
+  <!-- ── Main content ── -->
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title">Prediction Analytics &amp; Business Impact</div>
+        <div class="topbar-sub">7,470 employees · XGBoost v2 · AWS SageMaker ap-south-1 · Precision-Recall focus</div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-badge"><span>📊</span> IBM HR Analytics Dataset</div>
+        <div class="avatar">M</div>
       </div>
     </div>
-  </header>
 
-  <!-- ── HERO ── -->
-  <section class="hero">
-    <div class="hero-glow"></div>
-    <div class="eyebrow">BUSINESS INTELLIGENCE DASHBOARD</div>
-    <h1>Prediction<br><span class="c">Analytics</span><br><span class="r">&amp; Impact</span></h1>
-    <p class="hero-sub">
-      Prediction → conversion · Model performance · Precision-Recall · Business ROI<br>
-      Dataset: 7,470 employees · XGBoost v2 · AWS SageMaker ap-south-1
-    </p>
-  </section>
-
-  <div class="page">
+  <div class="page" style="padding:1.75rem 2rem">
 
     <!-- ══════════════════════════════════════════════════
          KPI STRIP
@@ -154,15 +156,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
       </div>
       <div class="kpi o">
         <div class="kpi-lbl">Potential Cost Saved</div>
-        <div class="kpi-num" style="color:var(--gold)" id="kN1">₹8.7Cr</div>
+        <div class="kpi-num" style="color:var(--amber)" id="kN1">₹8.7Cr</div>
         <div class="kpi-sub">realistic scenario (50%)</div>
-        <div class="kpi-tag" style="color:var(--gold)">▲ ₹2.5L avg per hire</div>
+        <div class="kpi-tag" style="color:var(--amber)">▲ ₹2.5L avg per hire</div>
       </div>
       <div class="kpi c">
         <div class="kpi-lbl">Model Accuracy</div>
-        <div class="kpi-num" style="color:var(--cyan)" id="kN2">87.1%</div>
+        <div class="kpi-num" style="color:var(--blue2)" id="kN2">87.1%</div>
         <div class="kpi-sub">on 1,494 test samples</div>
-        <div class="kpi-tag" style="color:var(--cyan)">▲ PR Avg Precision 0.71</div>
+        <div class="kpi-tag" style="color:var(--blue2)">▲ PR Avg Precision 0.71</div>
       </div>
       <div class="kpi g">
         <div class="kpi-lbl">Recall (Sensitivity)</div>
@@ -172,7 +174,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
       </div>
       <div class="kpi d">
         <div class="kpi-lbl">False Negatives</div>
-        <div class="kpi-num" style="color:var(--dim)" id="kN4">104</div>
+        <div class="kpi-num" style="color:var(--txt3)" id="kN4">104</div>
         <div class="kpi-sub">missed high-risk employees</div>
         <div class="kpi-tag" style="color:var(--red)">▲ ₹2.6Cr exposure</div>
       </div>
@@ -200,41 +202,41 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
 
         <!-- Why PR > ROC explanation strip -->
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-bottom:.9rem;">
-          <div style="background:var(--s2);border:1px solid var(--b1);padding:.65rem .8rem;">
-            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.25rem;">CLASS IMBALANCE</div>
+          <div style="background:var(--surface2);border:1px solid var(--border);padding:.65rem .8rem;">
+            <div style="font-family:var(--mono);font-size:8px;color:var(--txt3);margin-bottom:.25rem;">CLASS IMBALANCE</div>
             <div style="font-family:var(--mono);font-size:10px;color:var(--red);font-weight:700;">83.5% vs 16.5%</div>
-            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:.2rem;">ROC inflated by true negatives</div>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--txt3);margin-top:.2rem;">ROC inflated by true negatives</div>
           </div>
-          <div style="background:var(--s2);border:1px solid var(--b1);padding:.65rem .8rem;">
-            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.25rem;">CURRENT THRESHOLD 0.35</div>
-            <div style="font-family:var(--mono);font-size:10px;color:var(--cyan);font-weight:700;" id="prPrecVal">Precision: 76.2%</div>
-            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:.2rem;" id="prRecVal">Recall: 58.4%</div>
+          <div style="background:var(--surface2);border:1px solid var(--border);padding:.65rem .8rem;">
+            <div style="font-family:var(--mono);font-size:8px;color:var(--txt3);margin-bottom:.25rem;">CURRENT THRESHOLD 0.35</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--blue2);font-weight:700;" id="prPrecVal">Precision: 76.2%</div>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--txt3);margin-top:.2rem;" id="prRecVal">Recall: 58.4%</div>
           </div>
-          <div style="background:var(--s2);border:1px solid var(--b1);padding:.65rem .8rem;">
-            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.25rem;">F1 SCORE @ 0.35</div>
+          <div style="background:var(--surface2);border:1px solid var(--border);padding:.65rem .8rem;">
+            <div style="font-family:var(--mono);font-size:8px;color:var(--txt3);margin-bottom:.25rem;">F1 SCORE @ 0.35</div>
             <div style="font-family:var(--mono);font-size:10px;color:var(--green);font-weight:700;" id="prF1Val">F1: 66.1%</div>
-            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:.2rem;">Harmonic mean of P &amp; R</div>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--txt3);margin-top:.2rem;">Harmonic mean of P &amp; R</div>
           </div>
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
           <!-- Left: PR curve -->
           <div>
-            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.4rem;letter-spacing:.1em;">PR CURVE — drag threshold</div>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--txt3);margin-bottom:.4rem;letter-spacing:.1em;">PR CURVE — drag threshold</div>
             <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;flex-wrap:wrap;">
-              <span style="font-family:var(--mono);font-size:8px;color:var(--dim);">Threshold:</span>
-              <input type="range" id="prSlider" min="5" max="90" value="35" oninput="onPrSlide(this.value)" style="-webkit-appearance:none;appearance:none;height:3px;background:var(--b1);flex:1;max-width:120px;outline:none;"/>
-              <span id="prTVal" style="font-family:var(--mono);font-size:9px;color:var(--cyan);font-weight:700;">0.35</span>
+              <span style="font-family:var(--mono);font-size:8px;color:var(--txt3);">Threshold:</span>
+              <input type="range" id="prSlider" min="5" max="90" value="35" oninput="onPrSlide(this.value)" style="-webkit-appearance:none;appearance:none;height:3px;background:var(--border);flex:1;max-width:120px;outline:none;"/>
+              <span id="prTVal" style="font-family:var(--mono);font-size:9px;color:var(--blue2);font-weight:700;">0.35</span>
             </div>
             <canvas id="cvPR" height="210"></canvas>
           </div>
           <!-- Right: Precision & Recall vs Threshold lines -->
           <div>
-            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.4rem;letter-spacing:.1em;">P &amp; R vs THRESHOLD</div>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--txt3);margin-bottom:.4rem;letter-spacing:.1em;">P &amp; R vs THRESHOLD</div>
             <div style="display:flex;gap:1rem;margin-bottom:.5rem;">
-              <div style="display:flex;align-items:center;gap:.35rem;font-family:var(--mono);font-size:8px;color:var(--dim);"><div style="width:14px;height:2px;background:var(--cyan)"></div>Precision</div>
-              <div style="display:flex;align-items:center;gap:.35rem;font-family:var(--mono);font-size:8px;color:var(--dim);"><div style="width:14px;height:2px;background:var(--red)"></div>Recall</div>
-              <div style="display:flex;align-items:center;gap:.35rem;font-family:var(--mono);font-size:8px;color:var(--dim);"><div style="width:14px;height:2px;background:var(--green)"></div>F1</div>
+              <div style="display:flex;align-items:center;gap:.35rem;font-family:var(--mono);font-size:8px;color:var(--txt3);"><div style="width:14px;height:2px;background:var(--blue2)"></div>Precision</div>
+              <div style="display:flex;align-items:center;gap:.35rem;font-family:var(--mono);font-size:8px;color:var(--txt3);"><div style="width:14px;height:2px;background:var(--red)"></div>Recall</div>
+              <div style="display:flex;align-items:center;gap:.35rem;font-family:var(--mono);font-size:8px;color:var(--txt3);"><div style="width:14px;height:2px;background:var(--green)"></div>F1</div>
             </div>
             <canvas id="cvPRThresh" height="210"></canvas>
           </div>
@@ -254,9 +256,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
         <div style="display:flex;align-items:center;gap:1.5rem;">
           <canvas id="cvRadar" width="320" height="300"></canvas>
           <div class="rl">
-            <div class="rli"><div class="rld" style="background:var(--dim)"></div>Decision Tree</div>
-            <div class="rli"><div class="rld" style="background:var(--gold)"></div>Random Forest</div>
-            <div class="rli"><div class="rld" style="background:var(--cyan)"></div>XGBoost v2 (current)</div>
+            <div class="rli"><div class="rld" style="background:var(--txt3)"></div>Decision Tree</div>
+            <div class="rli"><div class="rld" style="background:var(--amber)"></div>Random Forest</div>
+            <div class="rli"><div class="rld" style="background:var(--blue2)"></div>XGBoost v2 (current)</div>
             <div class="rli-note">
               White dashed = minimum<br>
               quality threshold<br><br>
@@ -290,7 +292,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
         <div class="csub">Predicted probability buckets vs actual attrition rate — perfect model = diagonal line</div>
         <canvas id="cvCalib" height="260"></canvas>
         <div class="cleg">
-          <div class="cleg-item"><div class="cleg-line" style="background:var(--cyan);height:8px;opacity:.5"></div>Employee count (bar)</div>
+          <div class="cleg-item"><div class="cleg-line" style="background:var(--blue2);height:8px;opacity:.5"></div>Employee count (bar)</div>
           <div class="cleg-item"><div class="cleg-line" style="background:var(--red)"></div>Actual attrition rate</div>
           <div class="cleg-item"><div class="cleg-line" style="background:rgba(255,255,255,.2)"></div>Perfect calibration</div>
         </div>
@@ -303,13 +305,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
         <canvas id="cvScatter" height="260"
           onmousemove="scHover(event)" onmouseleave="scLeave()"></canvas>
         <div style="display:flex;gap:1.25rem;margin-top:.55rem;">
-          <div style="display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:8px;color:var(--dim);">
+          <div style="display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:8px;color:var(--txt3);">
             <div style="width:8px;height:8px;border-radius:50%;background:var(--red)"></div>HIGH (&gt;70%)
           </div>
-          <div style="display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:8px;color:var(--dim);">
-            <div style="width:8px;height:8px;border-radius:50%;background:var(--gold)"></div>MEDIUM (40-70%)
+          <div style="display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:8px;color:var(--txt3);">
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--amber)"></div>MEDIUM (40-70%)
           </div>
-          <div style="display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:8px;color:var(--dim);">
+          <div style="display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:8px;color:var(--txt3);">
             <div style="width:8px;height:8px;border-radius:50%;background:var(--green)"></div>LOW (&lt;40%)
           </div>
         </div>
@@ -329,12 +331,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
         <div class="scenarios">
           <div class="sc">
             <div class="sc-lbl">Pessimistic · 30%</div>
-            <div class="sc-num" style="color:var(--gold)">₹5.2 Cr</div>
+            <div class="sc-num" style="color:var(--amber)">₹5.2 Cr</div>
             <div class="sc-desc">208 of 693 HIGH risk retained</div>
           </div>
           <div class="sc">
             <div class="sc-lbl">Realistic · 50%</div>
-            <div class="sc-num" style="color:var(--cyan)">₹8.7 Cr</div>
+            <div class="sc-num" style="color:var(--blue2)">₹8.7 Cr</div>
             <div class="sc-desc">347 of 693 HIGH risk retained</div>
           </div>
           <div class="sc">
@@ -352,8 +354,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
         <canvas id="cvTiming" height="200"></canvas>
         <div class="timing">
           <div class="tc"><div class="tc-wk">WEEK 1</div><div class="tc-val" style="color:var(--green)">74%</div><div class="tc-sub">retention</div></div>
-          <div class="tc"><div class="tc-wk">WEEK 2</div><div class="tc-val" style="color:var(--cyan)">61%</div><div class="tc-sub">retention</div></div>
-          <div class="tc"><div class="tc-wk">WEEK 4</div><div class="tc-val" style="color:var(--gold)">43%</div><div class="tc-sub">retention</div></div>
+          <div class="tc"><div class="tc-wk">WEEK 2</div><div class="tc-val" style="color:var(--blue2)">61%</div><div class="tc-sub">retention</div></div>
+          <div class="tc"><div class="tc-wk">WEEK 4</div><div class="tc-val" style="color:var(--amber)">43%</div><div class="tc-sub">retention</div></div>
           <div class="tc"><div class="tc-wk">WEEK 8+</div><div class="tc-val" style="color:var(--red)">21%</div><div class="tc-sub">retention</div></div>
         </div>
       </div>
@@ -387,7 +389,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
       <div class="tag">DOCKER</div><div class="tag">AWS</div>
     </div>
   </footer>
-</div><!-- /wrap -->
+  </div><!-- /main-content -->
+</div><!-- /app-shell -->
 
 <!-- ══════════════════════════════════════════════════════════
      JAVASCRIPT — all charts
@@ -398,7 +401,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
 /* ─── palette ─────────────────────────────────────────────── */
 const P = {
   bg:'#060a0e', s1:'#0c1118', s2:'#121a22', b1:'#1e2d3d',
-  cy:'#00e5ff', rd:'#ff3d6b', gn:'#a8ff3e', go:'#ffd166',
+  cy:'#1E88E5', rd:'#ff3d6b', gn:'#a8ff3e', go:'#ffd166',
   tx:'#c8d8e8', dm:'#4a6a85'
 };
 
