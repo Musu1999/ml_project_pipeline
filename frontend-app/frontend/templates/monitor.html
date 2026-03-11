@@ -1039,8 +1039,8 @@ function renderDriftCharts(d) {
   drawDriftFeat(d);
 }
 
-  // On page load: draw drift charts with baseline data immediately,
-  // then fetch live data from API
+window.addEventListener('load', () => {
+  // Draw drift charts immediately with baseline data (before API loads)
   renderDriftCharts(null);
   loadMonitorData();
   window.addEventListener('resize', ()=>{ renderDriftCharts(null); });

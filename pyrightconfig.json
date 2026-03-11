@@ -1,0 +1,10 @@
+{
+  "include": ["src"],
+  "exclude": ["**/__pycache__", "**/node_modules"],
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none",
+  "reportUnusedImport": "none",
+  "pythonVersion": "3.10",
+  "typeCheckingMode": "off",
+  "useLibraryCodeForTypes": true
+}

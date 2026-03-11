@@ -1,4 +1,9 @@
 {
-    "python-envs.defaultEnvManager": "ms-python.python:system",
-    "python-envs.pythonProjects": []
+  "python.analysis.typeCheckingMode": "off",
+  "python.analysis.diagnosticMode": "workspace",
+  "python.analysis.reportMissingImports": "none",
+  "python.analysis.reportMissingModuleSource": "none",
+  "python.linting.enabled": false,
+  "python.defaultInterpreterPath": "/usr/bin/python3",
+  "editor.formatOnSave": false
 }
