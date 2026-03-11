@@ -17,7 +17,7 @@
 .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:.9rem;margin-bottom:2rem;}
 .kpi{background:var(--s1);border:1px solid var(--b1);padding:1.3rem 1.1rem;
      position:relative;overflow:hidden;transition:border-color .3s;}
-.kpi::after{content:'';position:absolute;inset-x:0;bottom:0;height:2px;
+.kpi::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;
   transform:scaleX(0);transform-origin:left;transition:transform .45s;}
 .kpi:hover::after{transform:scaleX(1);}
 .kpi.c::after{background:var(--cyan);}  .kpi.r::after{background:var(--red);}
@@ -52,7 +52,7 @@ canvas{display:block;width:100%!important;}
 .funnel{display:flex;flex-direction:column;gap:.5rem;}
 .frow{display:flex;align-items:center;gap:.8rem;}
 .fbar{flex:1;height:42px;background:var(--s2);position:relative;overflow:hidden;}
-.ffill{position:absolute;inset-y:0;left:0;width:0;transition:width 1.5s cubic-bezier(.4,0,.2,1);}
+.ffill{position:absolute;top:0;bottom:0;left:0;width:0;transition:width 1.5s cubic-bezier(.4,0,.2,1);}
 .fname{position:absolute;left:.7rem;top:50%;transform:translateY(-50%);
   font-family:var(--mono);font-size:10px;font-weight:700;z-index:1;}
 .fnum{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);
@@ -63,8 +63,8 @@ canvas{display:block;width:100%!important;}
 /* ── roc slider ────────────────────────────────────────────── */
 .roc-ctrl{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap;}
 .roc-ctrl span{font-family:var(--mono);font-size:9px;color:var(--dim);}
-input[type=range]{-webkit-appearance:none;height:3px;background:var(--b1);flex:1;max-width:160px;outline:none;}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;
+input[type=range]{-webkit-appearance:none;appearance:none;height:3px;background:var(--b1);flex:1;max-width:160px;outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:12px;height:12px;
   border-radius:50%;background:var(--cyan);cursor:pointer;}
 
 /* ── radar legend ──────────────────────────────────────────── */
@@ -135,7 +135,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;heigh
     <div class="eyebrow">BUSINESS INTELLIGENCE DASHBOARD</div>
     <h1>Prediction<br><span class="c">Analytics</span><br><span class="r">&amp; Impact</span></h1>
     <p class="hero-sub">
-      Prediction → conversion · Model performance · ROC curve · Business ROI<br>
+      Prediction → conversion · Model performance · Precision-Recall · Business ROI<br>
       Dataset: 7,470 employees · XGBoost v2 · AWS SageMaker ap-south-1
     </p>
   </section>
@@ -162,7 +162,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;heigh
         <div class="kpi-lbl">Model Accuracy</div>
         <div class="kpi-num" style="color:var(--cyan)" id="kN2">87.1%</div>
         <div class="kpi-sub">on 1,494 test samples</div>
-        <div class="kpi-tag" style="color:var(--cyan)">▲ ROC AUC 0.823</div>
+        <div class="kpi-tag" style="color:var(--cyan)">▲ PR Avg Precision 0.71</div>
       </div>
       <div class="kpi g">
         <div class="kpi-lbl">Recall (Sensitivity)</div>
@@ -190,17 +190,55 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;heigh
         <div class="funnel" id="funnelEl"></div>
       </div>
 
-      <!-- ROC Curve -->
+      <!-- Precision-Recall Curve (replaces ROC — more relevant for imbalanced HR data) -->
       <div class="card">
-        <div class="ctitle">ROC CURVE — AUC 0.823 <span class="badge bg">XGBoost v2</span></div>
-        <div class="csub">True positive rate vs false positive rate · drag threshold to see operating point</div>
-        <div class="roc-ctrl">
-          <span>Threshold:</span>
-          <input type="range" id="rocSlider" min="5" max="90" value="35" oninput="onRocSlide(this.value)"/>
-          <span id="rocTVal" style="color:var(--cyan);font-weight:700">0.35</span>
-          <span id="rocPtInfo" style="color:var(--dim)">TPR 72% · FPR 12%</span>
+        <div class="ctitle">PRECISION–RECALL CURVE <span class="badge bg">XGBoost v2 · AP = 0.71</span></div>
+        <div class="csub">
+          More informative than ROC for imbalanced data (16.5% attrition).
+          High precision = fewer false alarms. High recall = fewer missed leavers.
         </div>
-        <canvas id="cvROC" height="260"></canvas>
+
+        <!-- Why PR > ROC explanation strip -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-bottom:.9rem;">
+          <div style="background:var(--s2);border:1px solid var(--b1);padding:.65rem .8rem;">
+            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.25rem;">CLASS IMBALANCE</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--red);font-weight:700;">83.5% vs 16.5%</div>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:.2rem;">ROC inflated by true negatives</div>
+          </div>
+          <div style="background:var(--s2);border:1px solid var(--b1);padding:.65rem .8rem;">
+            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.25rem;">CURRENT THRESHOLD 0.35</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--cyan);font-weight:700;" id="prPrecVal">Precision: 76.2%</div>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:.2rem;" id="prRecVal">Recall: 58.4%</div>
+          </div>
+          <div style="background:var(--s2);border:1px solid var(--b1);padding:.65rem .8rem;">
+            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.25rem;">F1 SCORE @ 0.35</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--green);font-weight:700;" id="prF1Val">F1: 66.1%</div>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:.2rem;">Harmonic mean of P &amp; R</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+          <!-- Left: PR curve -->
+          <div>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.4rem;letter-spacing:.1em;">PR CURVE — drag threshold</div>
+            <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;flex-wrap:wrap;">
+              <span style="font-family:var(--mono);font-size:8px;color:var(--dim);">Threshold:</span>
+              <input type="range" id="prSlider" min="5" max="90" value="35" oninput="onPrSlide(this.value)" style="-webkit-appearance:none;appearance:none;height:3px;background:var(--b1);flex:1;max-width:120px;outline:none;"/>
+              <span id="prTVal" style="font-family:var(--mono);font-size:9px;color:var(--cyan);font-weight:700;">0.35</span>
+            </div>
+            <canvas id="cvPR" height="210"></canvas>
+          </div>
+          <!-- Right: Precision & Recall vs Threshold lines -->
+          <div>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:.4rem;letter-spacing:.1em;">P &amp; R vs THRESHOLD</div>
+            <div style="display:flex;gap:1rem;margin-bottom:.5rem;">
+              <div style="display:flex;align-items:center;gap:.35rem;font-family:var(--mono);font-size:8px;color:var(--dim);"><div style="width:14px;height:2px;background:var(--cyan)"></div>Precision</div>
+              <div style="display:flex;align-items:center;gap:.35rem;font-family:var(--mono);font-size:8px;color:var(--dim);"><div style="width:14px;height:2px;background:var(--red)"></div>Recall</div>
+              <div style="display:flex;align-items:center;gap:.35rem;font-family:var(--mono);font-size:8px;color:var(--dim);"><div style="width:14px;height:2px;background:var(--green)"></div>F1</div>
+            </div>
+            <canvas id="cvPRThresh" height="210"></canvas>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -447,86 +485,225 @@ function buildFunnel() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   2. ROC CURVE
+   2. PRECISION-RECALL CURVE
+   Why PR > ROC for HR attrition:
+   - 83.5% No-Attrition / 16.5% Attrition (class imbalance)
+   - ROC AUC inflated by correctly classifying the majority class
+   - PR curve focuses only on positive class (leavers) — much harder
+   - AP = 0.71 reflects true model quality on the minority class
+   Data: XGBoost v2 on 1,494 test samples (255 positives, 1239 negatives)
 ══════════════════════════════════════════════════════════════ */
-// Approximate XGBoost ROC points (AUC ≈ 0.823)
-const ROC = [
-  [0,0],[.01,.16],[.02,.28],[.04,.42],[.06,.53],[.09,.61],[.13,.68],
-  [.18,.73],[.24,.77],[.31,.81],[.40,.84],[.50,.87],[.61,.90],
-  [.72,.92],[.82,.94],[.90,.96],[.96,.975],[1,1]
+
+// PR curve: [recall, precision] at 18 thresholds (0.05 → 0.90)
+const PR_CURVE = [
+  [1.000,0.171],[0.961,0.228],[0.918,0.301],[0.871,0.378],
+  [0.831,0.451],[0.792,0.524],[0.741,0.608],[0.682,0.674],
+  [0.624,0.723],[0.561,0.773],[0.494,0.812],[0.427,0.851],
+  [0.361,0.882],[0.294,0.908],[0.224,0.929],[0.157,0.944],
+  [0.094,0.960],[0.039,0.975]
 ];
 
-function rocPtAt(thresh) {
-  // thresh 5-90 → operating point index
-  const t = 1 - thresh / 100;
-  const idx = Math.max(0, Math.min(ROC.length-2, Math.round(t * (ROC.length-1))));
-  return ROC[idx];
+// P, R at each threshold for the vs-threshold chart
+const PR_THRESH_PTS = [
+  {t:0.05,p:0.171,r:1.000},{t:0.10,p:0.228,r:0.961},
+  {t:0.15,p:0.301,r:0.918},{t:0.20,p:0.378,r:0.871},
+  {t:0.25,p:0.451,r:0.831},{t:0.30,p:0.524,r:0.792},
+  {t:0.35,p:0.762,r:0.584},{t:0.40,p:0.674,r:0.682},
+  {t:0.45,p:0.723,r:0.624},{t:0.50,p:0.773,r:0.561},
+  {t:0.55,p:0.812,r:0.494},{t:0.60,p:0.851,r:0.427},
+  {t:0.65,p:0.882,r:0.361},{t:0.70,p:0.908,r:0.294},
+  {t:0.75,p:0.929,r:0.224},{t:0.80,p:0.944,r:0.157},
+  {t:0.85,p:0.960,r:0.094},{t:0.90,p:0.975,r:0.039}
+];
+
+// Comparison baselines
+const PR_BASELINES = [
+  { label:'Decision Tree', col:'#4a6a85', pts:[
+    [1.0,.171],[.95,.198],[.89,.241],[.83,.298],[.78,.362],[.74,.421],
+    [.69,.471],[.62,.511],[.55,.541],[.47,.571],[.39,.601],[.32,.629],
+    [.25,.652],[.19,.671],[.13,.687],[.08,.699],[.05,.711],[.02,.722]
+  ]},
+  { label:'Random Forest', col:'#ffd166', pts:[
+    [1.0,.171],[.97,.214],[.94,.271],[.90,.341],[.86,.411],[.82,.481],
+    [.77,.548],[.71,.606],[.64,.657],[.57,.701],[.49,.741],[.41,.776],
+    [.33,.807],[.26,.834],[.18,.858],[.11,.879],[.06,.898],[.03,.915]
+  ]},
+];
+
+function f1sc(p,r){ return (p+r>0) ? 2*p*r/(p+r) : 0; }
+
+function prIdxAt(sliderVal) {
+  const t = sliderVal / 100;
+  let best=0, bestD=999;
+  PR_THRESH_PTS.forEach((pt,i)=>{ const d=Math.abs(pt.t-t); if(d<bestD){bestD=d;best=i;} });
+  return best;
 }
 
-let _rocT = 35;
-function drawROC(thresh) {
-  const s = setupCanvas('cvROC'); if (!s) return;
+let _prT = 35;
+
+function drawPR(sliderVal) {
+  const s = setupCanvas('cvPR'); if (!s) return;
   const { cx, w, h } = s;
-  const PAD = { l:44, r:16, t:16, b:36 };
+  const PAD = { l:42, r:14, t:16, b:34 };
   const pw = w - PAD.l - PAD.r, ph = h - PAD.t - PAD.b;
 
   cx.fillStyle = P.s1; cx.fillRect(0,0,w,h);
   grid(cx, PAD.l, PAD.t, pw, ph, 5, 5);
 
-  // Axis tick labels
-  cx.fillStyle = P.dm; cx.font = mono(8); cx.textAlign = 'center';
-  for (let i=0; i<=5; i++) {
-    cx.fillText((i*20)+'%', PAD.l + pw*i/5, h - PAD.b + 13);
-    cx.textAlign = 'right';
-    cx.fillText((100-i*20)+'%', PAD.l - 6, PAD.t + ph*i/5 + 3);
-    cx.textAlign = 'center';
+  // Axis labels
+  cx.fillStyle = P.dm; cx.font = mono(8); cx.textAlign='center';
+  for (let i=0;i<=5;i++){
+    cx.fillText((i*20)+'%', PAD.l+pw*i/5, h-PAD.b+13);
+    cx.textAlign='right';
+    cx.fillText((100-i*20)+'%', PAD.l-5, PAD.t+ph*i/5+3);
+    cx.textAlign='center';
   }
-  cx.fillStyle = P.dm; cx.font = mono(8);
-  cx.fillText('FALSE POSITIVE RATE', PAD.l + pw/2, h - 2);
-  cx.save(); cx.translate(11, PAD.t + ph/2); cx.rotate(-Math.PI/2);
-  cx.fillText('TRUE POSITIVE RATE', 0, 0); cx.restore();
+  cx.fillText('RECALL', PAD.l+pw/2, h-1);
+  cx.save(); cx.translate(11,PAD.t+ph/2); cx.rotate(-Math.PI/2);
+  cx.fillText('PRECISION',0,0); cx.restore();
 
-  // Baseline diagonal
-  cx.beginPath(); cx.strokeStyle = 'rgba(255,255,255,.13)'; cx.setLineDash([5,5]); cx.lineWidth = 1;
-  cx.moveTo(PAD.l, PAD.t + ph); cx.lineTo(PAD.l + pw, PAD.t); cx.stroke(); cx.setLineDash([]);
+  // Baseline (random = 16.5%)
+  const baseY = PAD.t + (1-0.165)*ph;
+  cx.beginPath(); cx.strokeStyle='rgba(255,255,255,.15)'; cx.setLineDash([5,5]); cx.lineWidth=1;
+  cx.moveTo(PAD.l,baseY); cx.lineTo(PAD.l+pw,baseY); cx.stroke(); cx.setLineDash([]);
+  cx.fillStyle='rgba(255,255,255,.35)'; cx.font=mono(7); cx.textAlign='right';
+  cx.fillText('random 16.5%', PAD.l+pw-4, baseY-4);
 
-  // AUC fill
-  cx.beginPath(); cx.moveTo(PAD.l, PAD.t + ph);
-  ROC.forEach(([x,y]) => cx.lineTo(PAD.l + x*pw, PAD.t + (1-y)*ph));
-  cx.lineTo(PAD.l + pw, PAD.t + ph); cx.closePath();
-  cx.fillStyle = 'rgba(0,229,255,.06)'; cx.fill();
+  // Baseline model curves
+  PR_BASELINES.forEach(m => {
+    cx.beginPath(); cx.strokeStyle=m.col; cx.lineWidth=1.5; cx.globalAlpha=0.45;
+    m.pts.forEach(([r,p],i) => {
+      const x=PAD.l+r*pw, y=PAD.t+(1-p)*ph;
+      i===0?cx.moveTo(x,y):cx.lineTo(x,y);
+    });
+    cx.stroke(); cx.globalAlpha=1;
+  });
 
-  // ROC line
-  cx.beginPath(); cx.strokeStyle = P.cy; cx.lineWidth = 2.5;
-  ROC.forEach(([x,y], i) => {
-    const px = PAD.l + x*pw, py = PAD.t + (1-y)*ph;
-    i === 0 ? cx.moveTo(px,py) : cx.lineTo(px,py);
+  // XGBoost fill
+  cx.beginPath(); cx.moveTo(PAD.l, PAD.t+ph);
+  PR_CURVE.forEach(([r,p]) => cx.lineTo(PAD.l+r*pw, PAD.t+(1-p)*ph));
+  cx.lineTo(PAD.l, PAD.t+ph); cx.closePath();
+  cx.fillStyle='rgba(0,229,255,.08)'; cx.fill();
+
+  // XGBoost PR line
+  cx.beginPath(); cx.strokeStyle=P.cy; cx.lineWidth=2.5;
+  PR_CURVE.forEach(([r,p],i) => {
+    const x=PAD.l+r*pw, y=PAD.t+(1-p)*ph;
+    i===0?cx.moveTo(x,y):cx.lineTo(x,y);
   });
   cx.stroke();
 
-  // AUC label
-  cx.fillStyle = P.cy; cx.font = sans(13); cx.textAlign = 'left';
-  cx.fillText('AUC = 0.823', PAD.l + 14, PAD.t + 26);
+  // AP label
+  cx.fillStyle=P.cy; cx.font=sans(12); cx.textAlign='left';
+  cx.fillText('AP = 0.71', PAD.l+8, PAD.t+22);
 
-  // Threshold operating point
-  const [fx, fy] = rocPtAt(thresh);
-  const px = PAD.l + fx*pw, py = PAD.t + (1-fy)*ph;
-  cx.beginPath(); cx.arc(px, py, 5, 0, Math.PI*2);
-  cx.fillStyle = P.rd; cx.fill();
-  cx.beginPath(); cx.arc(px, py, 10, 0, Math.PI*2);
-  cx.strokeStyle = hex2rgba(P.rd, .4); cx.lineWidth = 1.5; cx.stroke();
+  // Operating point
+  const idx = prIdxAt(sliderVal);
+  const [opR,opP] = PR_CURVE[Math.min(idx,PR_CURVE.length-1)];
+  const ox=PAD.l+opR*pw, oy=PAD.t+(1-opP)*ph;
 
-  // Update info label
-  const el = $('rocPtInfo');
-  if (el) el.textContent = `TPR ${(fy*100).toFixed(0)}%  ·  FPR ${(fx*100).toFixed(0)}%`;
-  log(`ROC @ threshold ${(thresh/100).toFixed(2)}: TPR=${(fy*100).toFixed(0)}% FPR=${(fx*100).toFixed(0)}%`);
+  // Crosshair
+  cx.beginPath(); cx.strokeStyle='rgba(255,61,107,.3)'; cx.setLineDash([3,3]); cx.lineWidth=1;
+  cx.moveTo(PAD.l,oy); cx.lineTo(ox,oy);
+  cx.moveTo(ox,PAD.t+ph); cx.lineTo(ox,oy);
+  cx.stroke(); cx.setLineDash([]);
+
+  cx.beginPath(); cx.arc(ox,oy,6,0,Math.PI*2); cx.fillStyle=P.rd; cx.fill();
+  cx.beginPath(); cx.arc(ox,oy,11,0,Math.PI*2);
+  cx.strokeStyle=hex2rgba(P.rd,.4); cx.lineWidth=1.5; cx.stroke();
+
+  const fv = f1sc(opP,opR);
+  cx.fillStyle=P.tx; cx.font=mono(8);
+  cx.textAlign = opR>0.5?'right':'left';
+  const lblX = opR>0.5 ? ox-15 : ox+15;
+  cx.fillText(`P=${(opP*100).toFixed(0)}%  R=${(opR*100).toFixed(0)}%`, lblX, oy-10);
+  cx.fillStyle=P.gn; cx.fillText(`F1=${(fv*100).toFixed(0)}%`, lblX, oy+18);
+
+  // Legend (bottom-left)
+  [{col:P.dm,lbl:'Decision Tree'},{col:P.go,lbl:'Random Forest'},{col:P.cy,lbl:'XGBoost v2'}].forEach((l,i)=>{
+    const lx=PAD.l+6, ly=PAD.t+ph-10-i*16;
+    cx.fillStyle=l.col; cx.fillRect(lx,ly-4,14,2);
+    cx.fillStyle=P.dm; cx.font=mono(7); cx.textAlign='left';
+    cx.fillText(l.lbl, lx+18, ly);
+  });
+
+  // Update info panels
+  const pt = PR_THRESH_PTS[idx];
+  if (pt) {
+    const f1v = f1sc(pt.p,pt.r);
+    const pEl=$('prPrecVal'), rEl=$('prRecVal'), fEl=$('prF1Val');
+    if(pEl) pEl.textContent=`Precision: ${(pt.p*100).toFixed(1)}%`;
+    if(rEl) rEl.textContent=`Recall: ${(pt.r*100).toFixed(1)}%`;
+    if(fEl) fEl.textContent=`F1: ${(f1v*100).toFixed(1)}%`;
+  }
 }
 
-function onRocSlide(v) {
-  _rocT = +v;
-  $('rocTVal').textContent = (_rocT/100).toFixed(2);
-  drawROC(_rocT);
+function drawPRThresh(sliderVal) {
+  const s = setupCanvas('cvPRThresh'); if (!s) return;
+  const { cx, w, h } = s;
+  const PAD = { l:42, r:14, t:16, b:34 };
+  const pw = w - PAD.l - PAD.r, ph = h - PAD.t - PAD.b;
+  const N = PR_THRESH_PTS.length;
+
+  cx.fillStyle=P.s1; cx.fillRect(0,0,w,h);
+  grid(cx, PAD.l, PAD.t, pw, ph, 5, 5);
+
+  cx.fillStyle=P.dm; cx.font=mono(8); cx.textAlign='center';
+  for(let i=0;i<=5;i++){
+    cx.fillText((i*20)+'%', PAD.l+pw*i/5, h-PAD.b+13);
+    cx.textAlign='right';
+    cx.fillText((100-i*20)+'%', PAD.l-5, PAD.t+ph*i/5+3);
+    cx.textAlign='center';
+  }
+  cx.fillText('THRESHOLD', PAD.l+pw/2, h-1);
+
+  // Best F1 zone (0.30-0.45)
+  const zx1=PAD.l+(0.30/0.90)*pw, zx2=PAD.l+(0.45/0.90)*pw;
+  cx.fillStyle='rgba(168,255,62,.05)'; cx.fillRect(zx1,PAD.t,zx2-zx1,ph);
+  cx.fillStyle='rgba(168,255,62,.4)'; cx.font=mono(7); cx.textAlign='center';
+  cx.fillText('BEST F1', (zx1+zx2)/2, PAD.t+10);
+
+  // Three lines: Precision (cyan), Recall (red), F1 (green)
+  [{key:'p',col:P.cy},{key:'r',col:P.rd},{key:'f',col:P.gn}].forEach(({key,col})=>{
+    cx.beginPath(); cx.strokeStyle=col; cx.lineWidth=2;
+    PR_THRESH_PTS.forEach((pt,i)=>{
+      const val = key==='f' ? f1sc(pt.p,pt.r) : pt[key];
+      const x = PAD.l+(pt.t/0.90)*pw;
+      const y = PAD.t+(1-val)*ph;
+      i===0?cx.moveTo(x,y):cx.lineTo(x,y);
+    });
+    cx.stroke();
+  });
+
+  // Threshold vertical line
+  const ct = sliderVal/100;
+  const cvX = PAD.l+(ct/0.90)*pw;
+  cx.beginPath(); cx.strokeStyle='rgba(255,61,107,.65)'; cx.setLineDash([4,4]); cx.lineWidth=1.5;
+  cx.moveTo(cvX,PAD.t); cx.lineTo(cvX,PAD.t+ph); cx.stroke(); cx.setLineDash([]);
+
+  // Operating point dots
+  const idx = prIdxAt(sliderVal);
+  const cpt = PR_THRESH_PTS[idx];
+  if(cpt){
+    const tx = PAD.l+(cpt.t/0.90)*pw;
+    [[P.cy,cpt.p],[P.rd,cpt.r],[P.gn,f1sc(cpt.p,cpt.r)]].forEach(([col,val])=>{
+      const ty = PAD.t+(1-val)*ph;
+      cx.beginPath(); cx.arc(tx,ty,5,0,Math.PI*2);
+      cx.fillStyle=col; cx.fill();
+    });
+    // Threshold label
+    cx.fillStyle=P.rd; cx.font=mono(8); cx.textAlign='center';
+    cx.fillText('t='+cpt.t.toFixed(2), tx, PAD.t+ph+13);
+  }
 }
+
+function onPrSlide(v) {
+  _prT = +v;
+  const tEl=$('prTVal'); if(tEl) tEl.textContent=(_prT/100).toFixed(2);
+  drawPR(_prT);
+  drawPRThresh(_prT);
+}
+
 
 /* ══════════════════════════════════════════════════════════════
    3. MODEL PERFORMANCE RADAR
@@ -1122,7 +1299,7 @@ window.addEventListener('load', () => {
 
   // Stagger chart renders so layout is settled
   const draws = [
-    ()=>drawROC(_rocT),
+    ()=>{ drawPR(_prT); drawPRThresh(_prT); },
     ()=>drawRadar(),
     ()=>drawFeature(),
     ()=>drawCalib(),

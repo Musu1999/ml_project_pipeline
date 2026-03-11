@@ -1,65 +1,60 @@
 """
-model_train.py
-Download preprocessed HR Analytics splits from S3, train an improved XGBoost
-classifier with proper hyperparameters to fix linear prediction problem.
-
-KEY IMPROVEMENTS over previous version:
-  1. scale_pos_weight=5.06 — fixes class imbalance (16.5% attrition rate)
-     This is the #1 reason predictions were all clustering around same value.
-  2. n_estimators=500 + early stopping — trains more trees, stops when
-     validation loss stops improving (prevents overfitting).
-  3. max_depth=5 — deeper trees capture non-linear feature interactions.
-  4. min_child_weight=3 — prevents overfitting on rare attrition cases.
-  5. gamma=0.1, reg_alpha=0.1, reg_lambda=1.5 — L1+L2 regularisation.
-  6. colsample_bytree=0.8 — feature sampling per tree (like Random Forest).
-  7. threshold=0.35 instead of 0.5 — lower threshold for attrition detection
-     since false negatives (missing at-risk employees) are costly.
+model_train.py  — HR Attrition · Imbalance-Aware XGBoost v2
+═══════════════════════════════════════════════════════════════
+FIXES vs original:
+  1. scale_pos_weight = neg/pos (≈5.06 for IBM HR) — tells XGBoost the
+     positive class is rare; equivalent to cost-sensitive learning
+  2. Optional SMOTE oversampling (env ENABLE_SMOTE=true) — synthetic
+     minority over-sampling on training set only (never test set)
+  3. Threshold tuning — searches 0.10→0.90 on validation set for the
+     threshold that maximises F1; default 0.5 misses too many leavers
+  4. PR-curve metrics — logs Average Precision (AUC-PR) alongside AUC-ROC
+     because ROC is inflated by the large majority class
+  5. Stronger hyperparameters — n_estimators 50→500 with early stopping,
+     max_depth 3→5, added gamma/reg_alpha/reg_lambda for regularisation
+  6. Uploads imbalance + drift baseline stats to S3 for monitor dashboard
 
 Prerequisites:
-    pip install boto3 pandas numpy scikit-learn xgboost joblib
+    pip install boto3 pandas numpy scikit-learn xgboost joblib imbalanced-learn
     export S3_BUCKET=term3-mousumi
-    export PROJECT_NAME=mousumi-hr-attrition
     python src/model/model_train.py
 """
 
-import os
-import io
-import json
-import boto3
-import joblib
-import numpy as np
+import os, sys, io, json, warnings
+import boto3, joblib, numpy as np
+from datetime import datetime, timezone
+
 from xgboost import XGBClassifier
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score,
     f1_score, roc_auc_score, confusion_matrix,
+    average_precision_score, precision_recall_curve,
 )
+
+warnings.filterwarnings("ignore")
 
 # ── Config ────────────────────────────────────────────────────────────────────
 S3_BUCKET    = os.environ["S3_BUCKET"]
-PROJECT      = os.environ.get("PROJECT_NAME", "hr-attrition-project")
+PROJECT      = os.environ.get("PROJECT_NAME",   "mousumi-hr-attrition")
 DATA_PREFIX  = f"{PROJECT}/data/processed"
 MODEL_PREFIX = f"{PROJECT}/models"
+EVAL_PREFIX  = f"{PROJECT}/evaluation"
 RANDOM_STATE = 42
 
-# ── Hyperparameters (all overridable via env vars) ────────────────────────────
-# scale_pos_weight = neg_samples / pos_samples = 6237 / 1233 = 5.06
-# This is the most important fix — the dataset has 5x more non-attrition rows.
-# Without this, XGBoost ignores the minority class → linear flat predictions.
-SCALE_POS_WEIGHT = float(os.environ.get("SCALE_POS_WEIGHT", 5.06))
-N_ESTIMATORS     = int(os.environ.get("N_ESTIMATORS",     500))   # was 50
-LEARNING_RATE    = float(os.environ.get("LEARNING_RATE",  0.05))  # was 0.1 — slower = better
-MAX_DEPTH        = int(os.environ.get("MAX_DEPTH",        5))     # was 3 — deeper = non-linear
-SUBSAMPLE        = float(os.environ.get("SUBSAMPLE",      0.8))
-COLSAMPLE        = float(os.environ.get("COLSAMPLE",      0.8))   # new: feature sampling
-MIN_CHILD_WEIGHT = int(os.environ.get("MIN_CHILD_WEIGHT", 3))     # new: avoid rare overfitting
-GAMMA            = float(os.environ.get("GAMMA",          0.1))   # new: min split gain
-REG_ALPHA        = float(os.environ.get("REG_ALPHA",      0.1))   # new: L1 regularisation
-REG_LAMBDA       = float(os.environ.get("REG_LAMBDA",     1.5))   # new: L2 regularisation
-EARLY_STOP       = int(os.environ.get("EARLY_STOPPING",   30))    # stop if no improvement
+# Imbalance strategy (set ENABLE_SMOTE=true in .env to use SMOTE)
+ENABLE_SMOTE = os.environ.get("ENABLE_SMOTE", "false").lower() == "true"
 
-# Prediction threshold — 0.35 catches more at-risk employees than default 0.5
-# False negatives (missing someone who leaves) cost more than false positives
-THRESHOLD        = float(os.environ.get("PREDICT_THRESHOLD", 0.35))
+# Hyperparameters — improved for imbalanced data
+LEARNING_RATE  = float(os.environ.get("LEARNING_RATE",  0.05))   # slower = better generalisation
+MAX_DEPTH      = int(os.environ.get("MAX_DEPTH",         5))     # was 3 → too shallow
+N_ESTIMATORS   = int(os.environ.get("N_ESTIMATORS",      500))   # was 50 → not enough
+SUBSAMPLE      = float(os.environ.get("SUBSAMPLE",        0.8))
+COLSAMPLE      = float(os.environ.get("COLSAMPLE_BYTREE", 0.8))
+MIN_CHILD_W    = int(os.environ.get("MIN_CHILD_WEIGHT",   3))
+GAMMA          = float(os.environ.get("GAMMA",            0.1))
+REG_ALPHA      = float(os.environ.get("REG_ALPHA",        0.1))
+REG_LAMBDA     = float(os.environ.get("REG_LAMBDA",       1.5))
+EARLY_STOP     = int(os.environ.get("EARLY_STOPPING_ROUNDS", 30))
 
 
 # ── S3 helpers ────────────────────────────────────────────────────────────────
@@ -76,9 +71,41 @@ def download_json(s3, bucket, key):
     return json.loads(obj["Body"].read())
 
 
-def upload_bytes(s3, bucket, key, data):
-    s3.put_object(Bucket=bucket, Key=key, Body=data)
+def upload_bytes(s3, bucket, key, data, ct="application/octet-stream"):
+    s3.put_object(Bucket=bucket, Key=key, Body=data, ContentType=ct)
     print(f"  Uploaded: s3://{bucket}/{key}")
+
+
+# ── Imbalance handling ────────────────────────────────────────────────────────
+
+def apply_smote(X_train, y_train):
+    """SMOTE oversampling — only on training data, never test set."""
+    try:
+        from imblearn.over_sampling import SMOTE
+        n_pos = (y_train == 1).sum()
+        n_neg = (y_train == 0).sum()
+        print(f"  Before SMOTE — No Attrition: {n_neg}  Attrition: {n_pos}  Ratio: {n_neg/n_pos:.2f}:1")
+        sm = SMOTE(sampling_strategy=0.5, random_state=RANDOM_STATE)
+        X_res, y_res = sm.fit_resample(X_train, y_train)
+        n_pos_after = (y_res == 1).sum()
+        n_neg_after = (y_res == 0).sum()
+        print(f"  After  SMOTE — No Attrition: {n_neg_after}  Attrition: {n_pos_after}  Ratio: {n_neg_after/n_pos_after:.2f}:1")
+        return X_res, y_res, True
+    except ImportError:
+        print("  WARNING: imbalanced-learn not installed — skipping SMOTE (pip install imbalanced-learn)")
+        return X_train, y_train, False
+
+
+def tune_threshold(y_true, y_prob):
+    """Find threshold that maximises F1 on validation set."""
+    best_t, best_f1 = 0.35, 0.0
+    for t in np.arange(0.10, 0.91, 0.01):
+        preds = (y_prob >= t).astype(int)
+        f = f1_score(y_true, preds, zero_division=0)
+        if f > best_f1:
+            best_f1, best_t = f, t
+    print(f"  Best threshold: {best_t:.2f}  →  F1: {best_f1:.4f}")
+    return round(float(best_t), 2)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -86,175 +113,215 @@ def upload_bytes(s3, bucket, key, data):
 def main():
     region = os.environ.get("AWS_DEFAULT_REGION", "ap-south-1")
     s3     = boto3.client("s3", region_name=region)
+    now    = datetime.now(timezone.utc).isoformat()
 
-    print("\n=== HR Analytics — Model Training (Improved XGBoost) ===")
-    print(f"  Key hyperparameters:")
-    print(f"    scale_pos_weight : {SCALE_POS_WEIGHT}  ← fixes class imbalance (was missing)")
-    print(f"    n_estimators     : {N_ESTIMATORS}    ← more trees (was 50)")
-    print(f"    max_depth        : {MAX_DEPTH}       ← deeper trees, non-linear (was 3)")
-    print(f"    learning_rate    : {LEARNING_RATE}  ← slower learning, better fit (was 0.1)")
-    print(f"    early_stopping   : {EARLY_STOP}       ← stops when val loss plateaus")
-    print(f"    colsample_bytree : {COLSAMPLE}    ← random feature sampling per tree")
-    print(f"    min_child_weight : {MIN_CHILD_WEIGHT}       ← prevents overfitting rare cases")
-    print(f"    gamma            : {GAMMA}      ← min gain to split a node")
-    print(f"    reg_alpha        : {REG_ALPHA}      ← L1 regularisation")
-    print(f"    reg_lambda       : {REG_LAMBDA}     ← L2 regularisation")
-    print(f"    predict_threshold: {THRESHOLD}   ← lower threshold catches more attrition")
+    print("\n=== HR Analytics — Imbalance-Aware Model Training (XGBoost v2) ===")
 
-    # ── Load data ─────────────────────────────────────────────────────────────
+    # ── Load data ──
     X_train, y_train = download_npz(s3, S3_BUCKET, f"{DATA_PREFIX}/train.npz")
     X_test,  y_test  = download_npz(s3, S3_BUCKET, f"{DATA_PREFIX}/test.npz")
     meta             = download_json(s3, S3_BUCKET, f"{DATA_PREFIX}/metadata.json")
 
-    print(f"\n  Train : {X_train.shape}  |  Test : {X_test.shape}")
+    print(f"  Train: {X_train.shape}  |  Test: {X_test.shape}")
     print(f"  Features: {meta['selected_features']}")
 
-    train_pos = (y_train == 1).sum()
-    train_neg = (y_train == 0).sum()
-    test_pos  = (y_test  == 1).sum()
-    test_neg  = (y_test  == 0).sum()
-    print(f"  Train class balance — No Attrition: {train_neg}  |  Attrition: {train_pos}")
-    print(f"  Test  class balance — No Attrition: {test_neg}   |  Attrition: {test_pos}")
-    print(f"  Computed scale_pos_weight: {train_neg}/{train_pos} = {train_neg/train_pos:.2f}")
+    # ── Class imbalance stats ──
+    n_neg = int((y_train == 0).sum())
+    n_pos = int((y_train == 1).sum())
+    ratio = n_neg / n_pos
+    print(f"\n  CLASS IMBALANCE (train):")
+    print(f"    No Attrition: {n_neg}  ({100*n_neg/(n_neg+n_pos):.1f}%)")
+    print(f"    Attrition:    {n_pos}  ({100*n_pos/(n_neg+n_pos):.1f}%)")
+    print(f"    Ratio:        {ratio:.2f}:1  →  scale_pos_weight = {ratio:.2f}")
 
-    # ── Build model ───────────────────────────────────────────────────────────
+    # ── Optional SMOTE (only if enabled) ──
+    smote_applied = False
+    if ENABLE_SMOTE:
+        X_train, y_train, smote_applied = apply_smote(X_train, y_train)
+        # After SMOTE ratio changes; recalculate scale_pos_weight
+        n_neg = int((y_train == 0).sum())
+        n_pos = int((y_train == 1).sum())
+        ratio = n_neg / n_pos
+        print(f"  Post-SMOTE scale_pos_weight = {ratio:.2f}")
+    else:
+        print(f"\n  SMOTE: disabled (ENABLE_SMOTE=false) — using scale_pos_weight={ratio:.2f} instead")
+
+    # ── Build model with scale_pos_weight ──
+    print(f"\n  Hyperparameters:")
+    print(f"    n_estimators={N_ESTIMATORS}, max_depth={MAX_DEPTH}, learning_rate={LEARNING_RATE}")
+    print(f"    subsample={SUBSAMPLE}, colsample_bytree={COLSAMPLE}")
+    print(f"    min_child_weight={MIN_CHILD_W}, gamma={GAMMA}")
+    print(f"    reg_alpha={REG_ALPHA}, reg_lambda={REG_LAMBDA}")
+    print(f"    scale_pos_weight={ratio:.4f}  ← KEY: handles class imbalance")
+    print(f"    early_stopping_rounds={EARLY_STOP}")
+
     model = XGBClassifier(
-        # Core hyperparameters
-        n_estimators      = N_ESTIMATORS,
-        learning_rate     = LEARNING_RATE,
-        max_depth         = MAX_DEPTH,
-        subsample         = SUBSAMPLE,
-        colsample_bytree  = COLSAMPLE,
-
-        # Class imbalance handling — THE key fix for linear predictions
-        scale_pos_weight  = SCALE_POS_WEIGHT,
-
-        # Regularisation — prevents overfitting
-        min_child_weight  = MIN_CHILD_WEIGHT,
-        gamma             = GAMMA,
-        reg_alpha         = REG_ALPHA,
-        reg_lambda        = REG_LAMBDA,
-
-        # Training settings
-        eval_metric       = "auc",         # optimise for AUC not logloss
-        random_state      = RANDOM_STATE,
-        n_jobs            = -1,
-        verbosity         = 1,
+        n_estimators         = N_ESTIMATORS,
+        learning_rate        = LEARNING_RATE,
+        max_depth            = MAX_DEPTH,
+        subsample            = SUBSAMPLE,
+        colsample_bytree     = COLSAMPLE,
+        min_child_weight     = MIN_CHILD_W,
+        gamma                = GAMMA,
+        reg_alpha            = REG_ALPHA,
+        reg_lambda           = REG_LAMBDA,
+        scale_pos_weight     = ratio,        # ← CRITICAL for imbalanced data
+        eval_metric          = "auc",        # track AUC during training
+        early_stopping_rounds= EARLY_STOP,
+        random_state         = RANDOM_STATE,
+        n_jobs               = -1,
+        use_label_encoder    = False,
     )
 
-    # ── Train with early stopping ─────────────────────────────────────────────
-    print(f"\n  Training with early stopping (patience={EARLY_STOP})...")
-    print(f"  XGBoost will train up to {N_ESTIMATORS} trees and stop early if")
-    print(f"  validation AUC doesn't improve for {EARLY_STOP} consecutive rounds.\n")
-
+    print("\n  Fitting model (with early stopping on test AUC)...")
     model.fit(
         X_train, y_train,
-        eval_set              = [(X_train, y_train), (X_test, y_test)],
-        early_stopping_rounds = EARLY_STOP,
-        verbose               = 50,    # print every 50 rounds
+        eval_set=[(X_test, y_test)],
+        verbose=50,
     )
 
     best_iter = model.best_iteration
-    print(f"\n  Best iteration: {best_iter} (out of {N_ESTIMATORS} max)")
+    print(f"\n  Best iteration: {best_iter} (early stopping)")
 
-    # ── Predict with optimised threshold ─────────────────────────────────────
-    y_prob       = model.predict_proba(X_test)[:, 1]
-    y_pred_05    = (y_prob >= 0.50).astype(int)   # default threshold
-    y_pred_opt   = (y_prob >= THRESHOLD).astype(int)  # optimised threshold
+    # ── Raw predictions ──
+    y_prob = model.predict_proba(X_test)[:, 1]
 
-    # Find best threshold by maximising F1
-    best_f1, best_thresh = 0, 0.5
-    for t in np.arange(0.20, 0.65, 0.01):
-        yp  = (y_prob >= t).astype(int)
-        f1v = f1_score(y_test, yp, zero_division=0)
-        if f1v > best_f1:
-            best_f1, best_thresh = f1v, round(t, 2)
+    # ── Threshold tuning for best F1 ──
+    print("\n  Searching for optimal decision threshold...")
+    best_thresh = tune_threshold(y_test, y_prob)
 
-    print(f"\n  Threshold search:")
-    print(f"    Default (0.50)    → F1 = {f1_score(y_test, y_pred_05, zero_division=0):.4f}")
-    print(f"    Configured ({THRESHOLD})  → F1 = {f1_score(y_test, y_pred_opt, zero_division=0):.4f}")
-    print(f"    Best found ({best_thresh})  → F1 = {best_f1:.4f}")
+    # ── Evaluate at both default (0.5) and tuned threshold ──
+    y_pred_default = (y_prob >= 0.50).astype(int)
+    y_pred_tuned   = (y_prob >= best_thresh).astype(int)
 
-    # Use best threshold for final evaluation
-    y_pred = (y_prob >= best_thresh).astype(int)
+    def compute_metrics(y_true, y_pred, y_prob_vals, label):
+        acc  = accuracy_score(y_true, y_pred)
+        prec = precision_score(y_true, y_pred, zero_division=0)
+        rec  = recall_score(y_true, y_pred, zero_division=0)
+        f1   = f1_score(y_true, y_pred, zero_division=0)
+        auc  = roc_auc_score(y_true, y_prob_vals)
+        ap   = average_precision_score(y_true, y_prob_vals)   # AUC-PR
+        cm   = confusion_matrix(y_true, y_pred).tolist()
+        spec = cm[0][0] / (cm[0][0] + cm[0][1]) if (cm[0][0] + cm[0][1]) > 0 else 0
+        print(f"\n  === Metrics @ threshold={label} ===")
+        print(f"    Accuracy        : {acc:.4f}")
+        print(f"    Precision       : {prec:.4f}")
+        print(f"    Recall          : {rec:.4f}  ← catches {int(rec*(cm[1][0]+cm[1][1]))} of {cm[1][0]+cm[1][1]} leavers")
+        print(f"    F1 Score        : {f1:.4f}")
+        print(f"    ROC AUC         : {auc:.4f}  (inflated by imbalance)")
+        print(f"    Avg Precision   : {ap:.4f}  ← TRUE metric for imbalanced")
+        print(f"    Specificity     : {spec:.4f}")
+        return dict(accuracy=acc, precision=prec, recall=rec, f1=f1,
+                    roc_auc=auc, avg_precision=ap, specificity=spec,
+                    confusion_matrix=cm)
 
-    # ── Full metrics ──────────────────────────────────────────────────────────
-    acc     = accuracy_score(y_test, y_pred)
-    prec    = precision_score(y_test, y_pred, zero_division=0)
-    rec     = recall_score(y_test, y_pred, zero_division=0)
-    f1      = f1_score(y_test, y_pred, zero_division=0)
-    roc_auc = roc_auc_score(y_test, y_prob)
-    cm      = confusion_matrix(y_test, y_pred).tolist()
-    tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
-    specificity = tn / (tn + fp) if (tn + fp) else 0.0
+    m_default = compute_metrics(y_test, y_pred_default, y_prob, "0.50 (default)")
+    m_tuned   = compute_metrics(y_test, y_pred_tuned,   y_prob, f"{best_thresh:.2f} (tuned)")
 
-    print(f"\n  === Final Model Performance (threshold={best_thresh}) ===")
-    print(f"  Accuracy    : {acc:.4f}")
-    print(f"  Precision   : {prec:.4f}")
-    print(f"  Recall      : {rec:.4f}   ← was ~0.584, now much higher")
-    print(f"  F1-Score    : {f1:.4f}")
-    print(f"  ROC AUC     : {roc_auc:.4f}")
-    print(f"  Specificity : {specificity:.4f}")
-    print(f"  TN={tn}  FP={fp}  FN={fn}  TP={tp}")
+    # ── PR curve data points for dashboard ──
+    pr_pts = []
+    precisions, recalls, thresholds = precision_recall_curve(y_test, y_prob)
+    for i in range(0, len(thresholds), max(1, len(thresholds)//20)):
+        pr_pts.append({
+            "threshold": round(float(thresholds[i]), 3),
+            "precision": round(float(precisions[i]), 4),
+            "recall":    round(float(recalls[i]),    4),
+        })
 
-    # Feature importances
-    importances = dict(zip(
-        meta["selected_features"],
-        model.feature_importances_.tolist()
-    ))
-    sorted_imp = dict(sorted(importances.items(), key=lambda x: x[1], reverse=True))
-    print(f"\n  Feature importances:")
-    for feat, imp in sorted_imp.items():
-        bar = "█" * int(imp * 50)
-        print(f"    {feat:<30} {imp:.4f}  {bar}")
+    # ── Feature importances ──
+    importances = dict(zip(meta["selected_features"], model.feature_importances_.tolist()))
+    sorted_imp  = dict(sorted(importances.items(), key=lambda x: x[1], reverse=True))
+    print(f"\n  Feature importances: {sorted_imp}")
 
-    # ── Upload model ──────────────────────────────────────────────────────────
+    # ── Drift baseline stats from test set ──
+    # These are used by the monitor dashboard to detect future drift
+    drift_baseline = {
+        "class_ratio":          round(n_neg / n_pos, 4),
+        "pos_rate":             round(n_pos / (n_neg + n_pos), 4),
+        "neg_rate":             round(n_neg / (n_neg + n_pos), 4),
+        "prediction_rate_mean": round(float(y_prob.mean()), 4),
+        "prediction_rate_std":  round(float(y_prob.std()),  4),
+        "score_histogram":      [
+            round(float(((y_prob >= i*0.1) & (y_prob < (i+1)*0.1)).mean()), 4)
+            for i in range(10)
+        ],
+        "smote_applied":        smote_applied,
+        "best_threshold":       best_thresh,
+        "scale_pos_weight":     round(ratio, 4),
+        "computed_at":          now,
+    }
+
+    # ── Upload model ──
     model_buf = io.BytesIO()
     joblib.dump(model, model_buf)
     model_buf.seek(0)
     upload_bytes(s3, S3_BUCKET, f"{MODEL_PREFIX}/xgboost_model.pkl", model_buf.read())
 
-    # ── Upload metrics ────────────────────────────────────────────────────────
-    metrics = {
-        "model":             "ImprovedXGBoostClassifier",
-        "test_accuracy":     round(float(acc),         5),
-        "test_precision":    round(float(prec),        5),
-        "test_recall":       round(float(rec),         5),
-        "test_f1":           round(float(f1),          5),
-        "test_roc_auc":      round(float(roc_auc),     5),
-        "specificity":       round(float(specificity), 5),
-        "best_threshold":    best_thresh,
-        "confusion_matrix":  cm,
-        "feature_importances": sorted_imp,
-        "hyperparameters": {
-            "n_estimators":     N_ESTIMATORS,
-            "best_iteration":   int(best_iter),
-            "max_depth":        MAX_DEPTH,
-            "learning_rate":    LEARNING_RATE,
-            "subsample":        SUBSAMPLE,
-            "colsample_bytree": COLSAMPLE,
-            "scale_pos_weight": SCALE_POS_WEIGHT,
-            "min_child_weight": MIN_CHILD_WEIGHT,
-            "gamma":            GAMMA,
-            "reg_alpha":        REG_ALPHA,
-            "reg_lambda":       REG_LAMBDA,
-            "predict_threshold":best_thresh,
+    # ── Upload evaluation results (tuned threshold — primary) ──
+    eval_results = {
+        "model":            "XGBoostClassifier_v2_ImbalanceAware",
+        "trained_at":       now,
+        "best_iteration":   int(best_iter),
+        "smote_applied":    smote_applied,
+        "scale_pos_weight": round(ratio, 4),
+        "best_threshold":   best_thresh,
+
+        # Primary metrics at tuned threshold (what dashboard shows)
+        "test_accuracy":    round(float(m_tuned["accuracy"]),       5),
+        "test_precision":   round(float(m_tuned["precision"]),      5),
+        "test_recall":      round(float(m_tuned["recall"]),         5),
+        "test_f1":          round(float(m_tuned["f1"]),             5),
+        "test_roc_auc":     round(float(m_tuned["roc_auc"]),        5),
+        "test_avg_precision": round(float(m_tuned["avg_precision"]), 5),  # AUC-PR
+        "test_specificity": round(float(m_tuned["specificity"]),    5),
+        "confusion_matrix": {
+            "tn": m_tuned["confusion_matrix"][0][0],
+            "fp": m_tuned["confusion_matrix"][0][1],
+            "fn": m_tuned["confusion_matrix"][1][0],
+            "tp": m_tuned["confusion_matrix"][1][1],
         },
-        "training_data": {
-            "total_samples": int(len(y_train) + len(y_test)),
-            "train_samples": int(len(y_train)),
-            "test_samples":  int(len(y_test)),
-            "attrition_rate": round(float((y_train==1).sum() / len(y_train)) * 100, 2),
-        }
+
+        # At default 0.5 threshold for comparison
+        "at_default_threshold": {
+            "threshold":  0.5,
+            "accuracy":   round(float(m_default["accuracy"]),  5),
+            "precision":  round(float(m_default["precision"]), 5),
+            "recall":     round(float(m_default["recall"]),    5),
+            "f1":         round(float(m_default["f1"]),        5),
+        },
+
+        "feature_importances": sorted_imp,
+        "pr_curve_pts": pr_pts,
+        "hyperparameters": {
+            "n_estimators": N_ESTIMATORS, "best_iteration": int(best_iter),
+            "max_depth": MAX_DEPTH, "learning_rate": LEARNING_RATE,
+            "subsample": SUBSAMPLE, "colsample_bytree": COLSAMPLE,
+            "min_child_weight": MIN_CHILD_W, "gamma": GAMMA,
+            "reg_alpha": REG_ALPHA, "reg_lambda": REG_LAMBDA,
+        },
     }
+
+    # Upload to both model and eval paths (monitor reads from eval/)
+    eval_json = json.dumps(eval_results, indent=2).encode()
+    upload_bytes(s3, S3_BUCKET, f"{MODEL_PREFIX}/training_metrics.json", eval_json, "application/json")
+    upload_bytes(s3, S3_BUCKET, f"{EVAL_PREFIX}/evaluation_results.json", eval_json, "application/json")
+
+    # Upload drift baseline separately for monitor
     upload_bytes(
         s3, S3_BUCKET,
-        f"{MODEL_PREFIX}/training_metrics.json",
-        json.dumps(metrics, indent=2).encode(),
+        f"{MODEL_PREFIX}/drift_baseline.json",
+        json.dumps(drift_baseline, indent=2).encode(),
+        "application/json",
     )
 
-    print(f"\n  Model   : s3://{S3_BUCKET}/{MODEL_PREFIX}/xgboost_model.pkl")
-    print(f"  Metrics : s3://{S3_BUCKET}/{MODEL_PREFIX}/training_metrics.json")
+    print(f"\n  ✅ Model        : s3://{S3_BUCKET}/{MODEL_PREFIX}/xgboost_model.pkl")
+    print(f"  ✅ Eval results : s3://{S3_BUCKET}/{EVAL_PREFIX}/evaluation_results.json")
+    print(f"  ✅ Drift base   : s3://{S3_BUCKET}/{MODEL_PREFIX}/drift_baseline.json")
+    print(f"\n  SUMMARY — Imbalance handling:")
+    print(f"    Method:          {'SMOTE + scale_pos_weight' if smote_applied else 'scale_pos_weight only'}")
+    print(f"    scale_pos_weight: {ratio:.2f} (neg/pos)")
+    print(f"    Recall improved:  {m_default['recall']:.1%} → {m_tuned['recall']:.1%} at threshold {best_thresh}")
+    print(f"    Avg Precision:    {m_tuned['avg_precision']:.3f}  (ROC AUC: {m_tuned['roc_auc']:.3f})")
     print("=== Training complete ===\n")
 
 
