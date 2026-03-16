@@ -14,8 +14,8 @@ const FEATS=[
   {n:"JobSat",v:.098},{n:"Marital",v:.062},{n:"Tenure+Sat",v:.031},{n:"Gender",v:.019},
 ];
 const BARS=[
-  {l:"Sat 1",r:88,c:"#ff3d6b"},{l:"Sat 2",r:62,c:"#ff8c42"},
-  {l:"Sat 3",r:38,c:"#ffd166"},{l:"Sat 4",r:18,c:"#a8ff3e"},
+  {l:"Sat 1",r:88,c:"#E53935"},{l:"Sat 2",r:62,c:"#ff8c42"},
+  {l:"Sat 3",r:38,c:"#F57C00"},{l:"Sat 4",r:18,c:"#2E7D32"},
 ];
 
 /* ── sigmoid ── */
@@ -129,7 +129,7 @@ function showResult(result){
   let verdict,cls,riskTxt,riskColor;
   if     (ap>=0.70){verdict='⚠ VERY HIGH ATTRITION RISK';cls='high';riskTxt='🔴 VERY HIGH';riskColor='var(--red)';}
   else if(ap>=0.50){verdict='⚠ HIGH ATTRITION RISK';     cls='high';riskTxt='🟠 HIGH';     riskColor='#ff8c42';}
-  else if(ap>=0.35){verdict='⚡ MEDIUM ATTRITION RISK';  cls='high';riskTxt='🟡 MEDIUM';   riskColor='var(--gold)';}
+  else if(ap>=0.35){verdict='⚡ MEDIUM ATTRITION RISK';  cls='high';riskTxt='🟡 MEDIUM';   riskColor='var(--amber,#F57C00)';}
   else if(ap>=0.18){verdict='✓ LOW ATTRITION RISK';      cls='low'; riskTxt='🟢 LOW';      riskColor='var(--green)';}
   else             {verdict='✓ VERY LIKELY TO STAY';     cls='low'; riskTxt='🟢 VERY LOW'; riskColor='var(--green)';}
 
@@ -150,7 +150,7 @@ function showResult(result){
   rRisk.textContent=riskTxt;rRisk.style.color=riskColor;
   const rMode=document.getElementById('rMode');
   rMode.textContent=mode.includes('sagemaker')?'✅ SAGEMAKER':'⚡ APPROX';
-  rMode.style.color=mode.includes('sagemaker')?'var(--green)':'var(--gold)';
+  rMode.style.color=mode.includes('sagemaker')?'var(--green)':'var(--amber,#F57C00)';
 }
 
 /* ── Predict ── */

@@ -16,13 +16,13 @@
 /* Status card */
 .status-card{background:var(--surface);border:1px solid var(--border);padding:1.5rem;}
 .status-card.alert{border-color:var(--red);}
-.status-card.ok{border-color:rgba(168,255,62,.3);}
+.status-card.ok{border-color:rgba(46,125,50,.3);}
 .sc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
 .sc-title{font-family:var(--sans);font-size:.72rem;color:var(--txt3);letter-spacing:.15em;text-transform:uppercase;}
 .sc-badge{font-family:var(--sans);font-size:.72rem;padding:.25rem .6rem;border:1px solid currentColor;}
-.sc-badge.green{color:var(--green);border-color:rgba(168,255,62,.4);}
-.sc-badge.red{color:var(--red);border-color:rgba(255,61,107,.4);}
-.sc-badge.gold{color:var(--amber);border-color:rgba(255,209,102,.4);}
+.sc-badge.green{color:var(--green);border-color:rgba(46,125,50,.4);}
+.sc-badge.red{color:var(--red);border-color:rgba(229,57,53,.4);}
+.sc-badge.gold{color:var(--amber);border-color:rgba(245,124,0,.4);}
 .sc-val{font-size:1.9rem;font-weight:800;letter-spacing:-.04em;margin-bottom:.25rem;}
 .sc-sub{font-family:var(--sans);font-size:.72rem;color:var(--txt3);}
 
@@ -42,15 +42,15 @@
   justify-content:center;font-family:var(--mono);}
 .cm-cell-val{font-size:1.3rem;font-weight:800;}
 .cm-cell-lbl{font-size:8px;color:var(--txt3);}
-.cm-tp{background:rgba(168,255,62,.15);}
-.cm-tn{background:rgba(168,255,62,.08);}
-.cm-fp{background:rgba(255,61,107,.08);}
-.cm-fn{background:rgba(255,61,107,.15);}
+.cm-tp{background:rgba(46,125,50,.15);}
+.cm-tn{background:rgba(46,125,50,.08);}
+.cm-fp{background:rgba(229,57,53,.08);}
+.cm-fn{background:rgba(229,57,53,.15);}
 
 /* Drift panel */
 .drift-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:2rem;}
 .drift-card{background:var(--surface);border:1px solid var(--border);padding:1.1rem;}
-.drift-card.warn{border-color:rgba(255,209,102,.4);}
+.drift-card.warn{border-color:rgba(245,124,0,.4);}
 .dc-name{font-family:var(--sans);font-size:.72rem;color:var(--txt3);letter-spacing:.1em;
   text-transform:uppercase;margin-bottom:.5rem;}
 .dc-status{font-family:var(--mono);font-size:11px;font-weight:700;margin-bottom:.25rem;}
@@ -63,9 +63,9 @@
 .drift-chart-title{font-family:var(--sans);font-size:.72rem;color:var(--txt3);letter-spacing:.12em;
   text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;justify-content:space-between;}
 .drift-badge{font-family:var(--sans);font-size:.7rem;padding:.2rem .5rem;border:1px solid currentColor;}
-.drift-badge.ok{color:var(--green);border-color:rgba(168,255,62,.35);}
-.drift-badge.warn{color:var(--amber);border-color:rgba(255,209,102,.35);}
-.drift-badge.alert{color:var(--red);border-color:rgba(255,61,107,.35);}
+.drift-badge.ok{color:var(--green);border-color:rgba(46,125,50,.35);}
+.drift-badge.warn{color:var(--amber);border-color:rgba(245,124,0,.35);}
+.drift-badge.alert{color:var(--red);border-color:rgba(229,57,53,.35);}
 .drift-stat-row{display:flex;gap:1.5rem;margin-bottom:.75rem;flex-wrap:wrap;}
 .drift-stat{flex:1;min-width:80px;}
 .drift-stat-val{font-family:var(--mono);font-size:1.1rem;font-weight:800;letter-spacing:-.02em;}
@@ -79,7 +79,7 @@
   padding:.6rem .9rem;border-bottom:1px solid var(--border);}
 .batch-hist-table td{font-family:var(--mono);font-size:10px;padding:.6rem .9rem;
   border-bottom:1px solid rgba(30,45,61,.5);}
-.batch-hist-table tr:hover td{background:rgba(0,229,255,.02);}
+.batch-hist-table tr:hover td{background:rgba(30,136,229,.02);}
 
 /* Alert banner */
 .alert-banner{
@@ -113,7 +113,7 @@
   text-transform:uppercase;cursor:pointer;position:relative;overflow:hidden;transition:color .25s;}
 .retrain-btn::before{content:'';position:absolute;top:0;right:0;bottom:0;left:0;background:var(--red);
   transform:translateX(-101%);transition:transform .28s cubic-bezier(.4,0,.2,1);}
-.retrain-btn:hover{color:var(--bg);}
+.retrain-btn:hover{color:var(--surface);}
 .retrain-btn:hover::before{transform:translateX(0);}
 .retrain-btn span{position:relative;z-index:1;}
 
@@ -757,7 +757,7 @@ function mon_rect(cx,x,y,w,h,col,alpha=1){
   cx.globalAlpha=alpha; cx.fillStyle=col; cx.fillRect(x,y,w,h); cx.globalAlpha=1;
 }
 function mon_text(cx,text,x,y,col,size=8,align='center'){
-  cx.fillStyle=col; cx.font=`${size}px 'Space Mono',monospace`; cx.textAlign=align;
+  cx.fillStyle=col; cx.font=`${size}px 'IBM Plex Mono','Courier New',monospace`; cx.textAlign=align;
   cx.fillText(text,x,y);
 }
 function mon_setupCanvas(id){
@@ -813,7 +813,7 @@ function drawDriftClass(data){
   });
 
   // Divider between original and SMOTE
-  cx.beginPath(); cx.strokeStyle='rgba(255,209,102,.35)'; cx.setLineDash([4,4]);
+  cx.beginPath(); cx.strokeStyle='rgba(245,124,0,.35)'; cx.setLineDash([4,4]);
   const divX=PAD.l+(bw+6)*2-3;
   cx.moveTo(divX,PAD.t); cx.lineTo(divX,PAD.t+ph); cx.stroke(); cx.setLineDash([]);
   mon_text(cx,'SMOTE →',divX+4,PAD.t+12,CV.go,7,'left');
@@ -882,7 +882,7 @@ function drawDriftRadar(data){
     i===0?cx.moveTo(x,y):cx.lineTo(x,y);
   });
   cx.closePath(); cx.stroke(); cx.globalAlpha=1;
-  cx.fillStyle='rgba(0,229,255,.07)'; cx.fill();
+  cx.fillStyle='rgba(30,136,229,.07)'; cx.fill();
 
   // Labels
   features.forEach((f,i)=>{

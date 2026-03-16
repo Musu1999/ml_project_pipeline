@@ -15,116 +15,116 @@
 .batch-outer{padding:2.5rem 3rem;}
 
 /* ── Mode toggle ── */
-.mode-toggle{display:flex;gap:0;border:1px solid var(--b1);width:fit-content;margin-bottom:2rem;}
+.mode-toggle{display:flex;gap:0;border:1px solid var(--border);width:fit-content;margin-bottom:2rem;}
 .mode-btn{padding:.6rem 1.5rem;background:transparent;border:none;
   font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--dim);cursor:pointer;transition:all .2s;border-right:1px solid var(--b1);}
+  color:var(--txt3);cursor:pointer;transition:all .2s;border-right:1px solid var(--border);}
 .mode-btn:last-child{border-right:none;}
-.mode-btn.active{background:var(--cyan);color:var(--bg);}
+.mode-btn.active{background:var(--blue2);color:var(--surface);}
 
 /* ── Upload drop zone ── */
-.upload-zone{border:2px dashed var(--b1);padding:3rem 2rem;text-align:center;
-  cursor:pointer;transition:all .3s;position:relative;background:var(--s1);margin-bottom:1.5rem;}
-.upload-zone:hover,.upload-zone.drag-over{border-color:var(--cyan);background:rgba(0,229,255,.04);}
+.upload-zone{border:2px dashed var(--border);padding:3rem 2rem;text-align:center;
+  cursor:pointer;transition:all .3s;position:relative;background:var(--surface);margin-bottom:1.5rem;}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--blue2);background:rgba(30,136,229,.04);}
 .upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;}
 .upload-icon{font-size:2.5rem;margin-bottom:1rem;display:block;}
 .upload-title{font-family:var(--mono);font-size:13px;color:var(--txt);margin-bottom:.5rem;}
-.upload-sub{font-family:var(--mono);font-size:10px;color:var(--dim);}
-.upload-filename{font-family:var(--mono);font-size:11px;color:var(--cyan);
+.upload-sub{font-family:var(--mono);font-size:10px;color:var(--txt3);}
+.upload-filename{font-family:var(--mono);font-size:11px;color:var(--blue2);
   margin-top:.75rem;display:none;}
 
 /* ── Quarter selector ── */
 .quarter-row{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;}
-.quarter-label{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.1em;}
-.quarter-select{background:var(--s2);border:1px solid var(--b1);color:var(--txt);
+.quarter-label{font-family:var(--mono);font-size:10px;color:var(--txt3);letter-spacing:.1em;}
+.quarter-select{background:var(--surface2);border:1px solid var(--border);color:var(--txt);
   font-family:var(--mono);font-size:11px;padding:.5rem 1rem;outline:none;
   cursor:pointer;appearance:none;-webkit-appearance:none;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234a6a85' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right .75rem center;padding-right:2rem;}
-.quarter-select option{background:var(--s2);}
+.quarter-select option{background:var(--surface2);}
 
 /* ── CSV template download ── */
-.template-note{font-family:var(--mono);font-size:10px;color:var(--dim);
-  background:var(--s1);border:1px solid var(--b1);padding:.75rem 1rem;
+.template-note{font-family:var(--mono);font-size:10px;color:var(--txt3);
+  background:var(--surface);border:1px solid var(--border);padding:.75rem 1rem;
   margin-bottom:1.5rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;}
-.template-note b{color:var(--cyan);}
-.dl-btn{background:transparent;border:1px solid var(--b1);color:var(--dim);
+.template-note b{color:var(--blue2);}
+.dl-btn{background:transparent;border:1px solid var(--border);color:var(--txt3);
   font-family:var(--sans);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
   padding:.4rem .8rem;cursor:pointer;transition:all .2s;}
-.dl-btn:hover{border-color:var(--cyan);color:var(--cyan);}
+.dl-btn:hover{border-color:var(--blue2);color:var(--blue2);}
 
 /* ── Feature ref grid ── */
 .feat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:1.5rem;}
-.feat-box{background:var(--s1);border:1px solid var(--b1);padding:.65rem .75rem;}
-.feat-box-col{font-family:var(--sans);font-size:.7rem;color:var(--cyan);margin-bottom:.2rem;letter-spacing:.05em;}
+.feat-box{background:var(--surface);border:1px solid var(--border);padding:.65rem .75rem;}
+.feat-box-col{font-family:var(--sans);font-size:.7rem;color:var(--blue2);margin-bottom:.2rem;letter-spacing:.05em;}
 .feat-box-name{font-family:var(--sans);font-size:.72rem;color:var(--txt);font-weight:700;margin-bottom:.2rem;}
-.feat-box-vals{font-family:var(--sans);font-size:.7rem;color:var(--dim);line-height:1.5;}
+.feat-box-vals{font-family:var(--sans);font-size:.7rem;color:var(--txt3);line-height:1.5;}
 
 /* ── JSON panel ── */
-.batch-hint{font-family:var(--mono);font-size:11px;color:var(--dim);
-  background:var(--s1);border:1px solid var(--b1);padding:.85rem 1rem;margin-bottom:1rem;line-height:1.9;}
-.batch-hint b{color:var(--cyan);}
+.batch-hint{font-family:var(--mono);font-size:11px;color:var(--txt3);
+  background:var(--surface);border:1px solid var(--border);padding:.85rem 1rem;margin-bottom:1rem;line-height:1.9;}
+.batch-hint b{color:var(--blue2);}
 textarea#bInput{width:100%;min-height:220px;background:#121a22 !important;
-  border:1px solid var(--b1) !important;color:var(--c8d8e8) !important;
+  border:1px solid var(--border) !important;color:var(--c8d8e8) !important;
   font-family:'IBM Plex Mono','Courier New',monospace !important;font-size:12px !important;
   padding:1rem !important;outline:none !important;resize:vertical;line-height:1.9;
   display:block;transition:border-color .2s;color:var(--txt);}
-textarea#bInput:focus{border-color:var(--cyan) !important;}
+textarea#bInput:focus{border-color:var(--blue2) !important;}
 
 /* ── Buttons ── */
 .btn-row{display:flex;gap:.75rem;margin-top:1rem;flex-wrap:wrap;}
 .xbtn{padding:.8rem 1.5rem;background:transparent;font-family:var(--mono);font-size:10px;
   letter-spacing:.1em;text-transform:uppercase;cursor:pointer;position:relative;
-  overflow:hidden;transition:color .25s;border:1px solid var(--cyan);color:var(--cyan);}
-.xbtn::before{content:'';position:absolute;inset:0;background:var(--cyan);
+  overflow:hidden;transition:color .25s;border:1px solid var(--blue2);color:var(--blue2);}
+.xbtn::before{content:'';position:absolute;inset:0;background:var(--blue2);
   transform:translateX(-101%);transition:transform .28s cubic-bezier(.4,0,.2,1);}
-.xbtn:hover{color:#060a0e;} .xbtn:hover::before{transform:translateX(0);}
+.xbtn:hover{color:#FFFFFF;} .xbtn:hover::before{transform:translateX(0);}
 .xbtn span{position:relative;z-index:1;}
 .xbtn:disabled{opacity:.35;cursor:not-allowed;}
-.xbtn.dim{border-color:var(--b1);color:var(--dim);}
-.xbtn.dim::before{background:var(--dim);}
+.xbtn.dim{border-color:var(--border);color:var(--txt3);}
+.xbtn.dim::before{background:var(--txt3);}
 .xbtn.red-btn{border-color:var(--red);color:var(--red);}
 .xbtn.red-btn::before{background:var(--red);}
 
 /* ── Progress bar ── */
 .progress-wrap{display:none;margin-top:1rem;}
-.progress-bar{height:3px;background:var(--s2);width:100%;}
-.progress-fill{height:100%;background:var(--cyan);width:0%;transition:width .3s;}
-.progress-label{font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:.4rem;}
+.progress-bar{height:3px;background:var(--surface2);width:100%;}
+.progress-fill{height:100%;background:var(--blue2);width:0%;transition:width .3s;}
+.progress-label{font-family:var(--mono);font-size:10px;color:var(--txt3);margin-top:.4rem;}
 
 /* ── Results ── */
 .res-wrap{margin-top:2.5rem;display:none;}
 .res-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:gap;}
 .res-actions{display:flex;gap:.5rem;}
 .sum-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.75rem;margin-bottom:1.75rem;}
-.sum-card{background:var(--s1);border:1px solid var(--b1);padding:1.1rem 1rem;text-align:center;}
-.sum-card-lbl{font-family:var(--sans);font-size:.7rem;color:var(--dim);
+.sum-card{background:var(--surface);border:1px solid var(--border);padding:1.1rem 1rem;text-align:center;}
+.sum-card-lbl{font-family:var(--sans);font-size:.7rem;color:var(--txt3);
   letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem;}
 .sum-card-val{font-size:1.8rem;font-weight:800;letter-spacing:-.04em;}
-.sum-card-sub{font-family:var(--sans);font-size:.7rem;color:var(--dim);margin-top:.25rem;}
+.sum-card-sub{font-family:var(--sans);font-size:.7rem;color:var(--txt3);margin-top:.25rem;}
 
 /* ── Risk chart ── */
 .risk-chart-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.75rem;}
-.mini-chart{background:var(--s1);border:1px solid var(--b1);padding:1.1rem 1.25rem;}
-.mini-chart-title{font-family:var(--sans);font-size:.72rem;color:var(--dim);
+.mini-chart{background:var(--surface);border:1px solid var(--border);padding:1.1rem 1.25rem;}
+.mini-chart-title{font-family:var(--sans);font-size:.72rem;color:var(--txt3);
   letter-spacing:.12em;text-transform:uppercase;margin-bottom:1rem;}
 .risk-bar-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem;}
-.risk-bar-label{font-family:var(--sans);font-size:.72rem;color:var(--dim);width:70px;flex-shrink:0;}
-.risk-bar-track{flex:1;height:6px;background:var(--s2);}
+.risk-bar-label{font-family:var(--sans);font-size:.72rem;color:var(--txt3);width:70px;flex-shrink:0;}
+.risk-bar-track{flex:1;height:6px;background:var(--surface2);}
 .risk-bar-fill{height:100%;transition:width .8s cubic-bezier(.4,0,.2,1);}
-.risk-bar-pct{font-family:var(--sans);font-size:.72rem;color:var(--dim);width:32px;text-align:right;}
+.risk-bar-pct{font-family:var(--sans);font-size:.72rem;color:var(--txt3);width:32px;text-align:right;}
 
 /* ── Table ── */
 .rtable-wrap{overflow-x:auto;}
 .rtable{width:100%;border-collapse:collapse;min-width:700px;}
-.rtable th{font-family:var(--sans);font-size:.72rem;color:var(--dim);
+.rtable th{font-family:var(--sans);font-size:.72rem;color:var(--txt3);
   letter-spacing:.1em;text-transform:uppercase;text-align:left;
-  padding:.65rem 1rem;border-bottom:1px solid var(--b1);white-space:nowrap;}
+  padding:.65rem 1rem;border-bottom:1px solid var(--border);white-space:nowrap;}
 .rtable td{font-family:var(--mono);font-size:11px;padding:.65rem 1rem;
   border-bottom:1px solid rgba(30,45,61,.5);}
-.rtable tr:hover td{background:rgba(0,229,255,.02);}
+.rtable tr:hover td{background:rgba(30,136,229,.02);}
 .ayes{color:var(--red);font-weight:700;} .ano{color:var(--green);font-weight:700;}
-.rvh{color:#ff1744;} .rhi{color:var(--red);} .rme{color:var(--gold);} .rlo{color:var(--green);}
+.rvh{color:#ff1744;} .rhi{color:var(--red);} .rme{color:var(--amber);} .rlo{color:var(--green);}
 
 /* ── Risk donut ── */
 .donut-row{display:flex;align-items:center;gap:1.5rem;}
@@ -133,15 +133,15 @@ textarea#bInput:focus{border-color:var(--cyan) !important;}
 .donut-center{position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;}
 .donut-pct{font-size:1.1rem;font-weight:800;letter-spacing:-.04em;}
-.donut-sub{font-family:var(--mono);font-size:7px;color:var(--dim);}
+.donut-sub{font-family:var(--mono);font-size:7px;color:var(--txt3);}
 .donut-legend{display:flex;flex-direction:column;gap:.35rem;}
 .donut-legend-item{display:flex;align-items:center;gap:.5rem;
-  font-family:var(--sans);font-size:.72rem;color:var(--dim);}
+  font-family:var(--sans);font-size:.72rem;color:var(--txt3);}
 .legend-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 
 /* ── S3 archive notice ── */
 .archive-notice{font-family:var(--mono);font-size:10px;color:var(--green);
-  background:rgba(168,255,62,.06);border:1px solid rgba(168,255,62,.2);
+  background:rgba(46,125,50,.06);border:1px solid rgba(46,125,50,.2);
   padding:.65rem 1rem;margin-bottom:1rem;display:none;}
 .archive-notice.show{display:block;}
 </style>
@@ -283,7 +283,7 @@ textarea#bInput:focus{border-color:var(--cyan) !important;}
     <!-- ── RESULTS ── -->
     <div class="res-wrap" id="resWrap">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem;">
-        <div class="sec-title" style="margin:0">RESULTS <span id="resQuarterTag" style="color:var(--cyan);margin-left:.5rem;font-size:10px;"></span></div>
+        <div class="sec-title" style="margin:0">RESULTS <span id="resQuarterTag" style="color:var(--blue2);margin-left:.5rem;font-size:10px;"></span></div>
         <div style="display:flex;gap:.5rem;">
           <button class="xbtn dim" onclick="exportCSV()"><span>⬇ EXPORT CSV</span></button>
           <button class="xbtn dim" onclick="exportJSON()"><span>⬇ EXPORT JSON</span></button>
@@ -309,12 +309,12 @@ textarea#bInput:focus{border-color:var(--cyan) !important;}
         </div>
         <div class="sum-card">
           <div class="sum-card-lbl">MEDIUM RISK</div>
-          <div class="sum-card-val" id="rMed" style="color:var(--gold)">0</div>
+          <div class="sum-card-val" id="rMed" style="color:var(--amber)">0</div>
           <div class="sum-card-sub">PROB 40–70%</div>
         </div>
         <div class="sum-card">
           <div class="sum-card-lbl">ATTRITION RATE</div>
-          <div class="sum-card-val" id="rRate" style="color:var(--cyan)">0%</div>
+          <div class="sum-card-val" id="rRate" style="color:var(--blue2)">0%</div>
           <div class="sum-card-sub">THIS BATCH</div>
         </div>
       </div>
@@ -330,8 +330,8 @@ textarea#bInput:focus{border-color:var(--cyan) !important;}
             <div class="risk-bar-pct" id="pctHigh">0%</div>
           </div>
           <div class="risk-bar-row">
-            <div class="risk-bar-label" style="color:var(--gold)">Medium</div>
-            <div class="risk-bar-track"><div class="risk-bar-fill" id="barMed" style="background:var(--gold);width:0%"></div></div>
+            <div class="risk-bar-label" style="color:var(--amber)">Medium</div>
+            <div class="risk-bar-track"><div class="risk-bar-fill" id="barMed" style="background:var(--amber);width:0%"></div></div>
             <div class="risk-bar-pct" id="pctMed">0%</div>
           </div>
           <div class="risk-bar-row">
@@ -346,7 +346,7 @@ textarea#bInput:focus{border-color:var(--cyan) !important;}
           <div class="donut-row">
             <div class="donut-svg-wrap">
               <svg width="90" height="90" viewBox="0 0 90 90">
-                <circle cx="45" cy="45" r="35" fill="none" stroke="var(--s2)" stroke-width="10"/>
+                <circle cx="45" cy="45" r="35" fill="none" stroke="var(--surface2)" stroke-width="10"/>
                 <circle cx="45" cy="45" r="35" fill="none" stroke="var(--red)" stroke-width="10"
                   stroke-dasharray="0 220" id="donutArc" style="transition:stroke-dasharray 1s ease"/>
               </svg>
@@ -358,7 +358,7 @@ textarea#bInput:focus{border-color:var(--cyan) !important;}
             <div class="donut-legend">
               <div class="donut-legend-item"><div class="legend-dot" style="background:var(--red)"></div>Attrition: <span id="dLegAtt" style="color:var(--red);margin-left:.25rem">0</span></div>
               <div class="donut-legend-item"><div class="legend-dot" style="background:var(--green)"></div>Retained: <span id="dLegRet" style="color:var(--green);margin-left:.25rem">0</span></div>
-              <div class="donut-legend-item"><div class="legend-dot" style="background:var(--b1)"></div>Errors: <span id="dLegErr" style="color:var(--dim);margin-left:.25rem">0</span></div>
+              <div class="donut-legend-item"><div class="legend-dot" style="background:var(--border)"></div>Errors: <span id="dLegErr" style="color:var(--txt3);margin-left:.25rem">0</span></div>
             </div>
           </div>
         </div>
@@ -727,18 +727,18 @@ function renderResults(result){
     const live=(p.mode||'').includes('sagemaker');
     const tr=document.createElement('tr');
     tr.innerHTML=`
-      <td style="color:var(--dim)">${n++}</td>
+      <td style="color:var(--txt3)">${n++}</td>
       <td style="font-weight:600">${p.name}</td>
       <td class="${isAtt?'ayes':'ano'}">${isAtt?'⚠ ATTRITION':'✓ RETAINED'}</td>
       <td style="color:${isAtt?'var(--red)':'var(--green)'};font-weight:700">${(ap*100).toFixed(1)}%</td>
-      <td style="color:var(--dim)">${(rp*100).toFixed(1)}%</td>
+      <td style="color:var(--txt3)">${(rp*100).toFixed(1)}%</td>
       <td class="${rc}">${rl}</td>
-      <td style="color:var(--dim);font-size:9px">${live?'✅ LIVE':'⚡ APPROX'}</td>`;
+      <td style="color:var(--txt3);font-size:9px">${live?'✅ LIVE':'⚡ APPROX'}</td>`;
     tbody.appendChild(tr);
   });
   (result.errors||[]).forEach(e=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td style="color:var(--dim)">${n++}</td>
+    tr.innerHTML=`<td style="color:var(--txt3)">${n++}</td>
       <td>${e.name}</td><td colspan="5" style="color:var(--red)">ERROR: ${e.error}</td>`;
     tbody.appendChild(tr);
   });
