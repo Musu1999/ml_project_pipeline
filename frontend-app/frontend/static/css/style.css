@@ -379,7 +379,7 @@ body{
   display:flex;align-items:center;justify-content:space-between;
   background:var(--surface);
 }
-.card-head-left{}
+
 .card-head-title{font-size:.88rem;font-weight:700;color:var(--txt);font-family:var(--serif);letter-spacing:-.01em}
 .card-head-sub{font-size:.7rem;color:var(--txt4);font-family:var(--sans);margin-top:3px;line-height:1.5}
 .card-badge{
