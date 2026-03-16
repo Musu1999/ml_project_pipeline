@@ -68,36 +68,53 @@ function showExpiredBanner(){
   b=document.createElement('div');
   b.id='expiredBanner';
   b.style.cssText='position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:999;'+
-    'background:#ff3d6b;color:#fff;font-family:var(--mono);font-size:11px;padding:.75rem 1.5rem;'+
-    'letter-spacing:.1em;box-shadow:0 4px 24px rgba(255,61,107,.4);animation:fadein .3s ease';
-  b.innerHTML='⚠ AWS SESSION TOKEN EXPIRED — Refresh credentials in .env from AWS Academy → AWS Details → Show';
+    'background:#1565C0;color:#fff;font-family:var(--sans,sans-serif);font-size:.78rem;'+
+    'font-weight:500;padding:.75rem 1.5rem;border-radius:8px;'+
+    'box-shadow:0 4px 20px rgba(21,101,192,.35);animation:fadein .3s ease;'+
+    'display:flex;align-items:center;gap:.75rem;max-width:600px;text-align:center;';
+  b.innerHTML='🔑 AWS session token has expired — go to AWS Academy → AWS Details → copy new credentials into <code style="background:rgba(255,255,255,.15);padding:.1rem .4rem;border-radius:4px">.env</code> then restart Docker'+
+    '<button onclick="this.parentNode.remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;'+
+    'cursor:pointer;font-size:1rem;padding:.1rem .4rem;border-radius:4px;flex-shrink:0">✕</button>';
   document.body.appendChild(b);
-  setTimeout(()=>{if(b)b.remove();},12000);
+  setTimeout(()=>{if(b&&b.parentNode)b.remove();},15000);
 }
 
 /* ── Health check ── */
 function checkHealth(){
+  const dot=document.getElementById('stDot');
+  const lbl=document.getElementById('stLabel');
+
   fetch('/api/health').then(r=>r.json()).then(h=>{
-    const dot=document.getElementById('stDot');
-    const lbl=document.getElementById('stLabel');
     if(!dot||!lbl)return;
     if(h.ready){
-      dot.className='dot live';lbl.textContent='ENDPOINT LIVE';lbl.style.color='var(--green)';
+      dot.className='dot live';
+      lbl.textContent='Endpoint Live';
+      lbl.style.color='var(--green,#2E7D32)';
       addLog('SageMaker connected: '+h.endpoint_name+' ['+h.endpoint_status+']','ok');
     } else if(!h.token_valid||h.endpoint_status==='expired_token'){
-      dot.className='dot dead';lbl.textContent='TOKEN EXPIRED';lbl.style.color='var(--red)';
-      addLog('AWS session token EXPIRED — refresh .env from AWS Academy','err');
+      dot.className='dot wait';
+      lbl.textContent='Token Expired';
+      lbl.style.color='var(--amber,#F57C00)';
+      addLog('AWS session token expired — refresh credentials in .env','err');
       showExpiredBanner();
     } else if(h.credentials==='missing'){
-      dot.className='dot dead';lbl.textContent='CREDS MISSING';lbl.style.color='var(--red)';
-      addLog('AWS keys missing in .env','err');
+      dot.className='dot wait';
+      lbl.textContent='No Credentials';
+      lbl.style.color='var(--amber,#F57C00)';
+      addLog('AWS credentials not set in .env — predictions will use local approximation','inf');
     } else {
-      dot.className='dot dead';lbl.textContent='ENDPOINT OFFLINE';lbl.style.color='var(--red)';
-      addLog('Endpoint status: '+h.endpoint_status,'err');
+      dot.className='dot wait';
+      lbl.textContent='Offline Mode';
+      lbl.style.color='var(--amber,#F57C00)';
+      addLog('Endpoint offline — predictions using local approximation','inf');
     }
   }).catch(()=>{
-    const lbl=document.getElementById('stLabel');
-    if(lbl){lbl.textContent='SERVER ERROR';document.getElementById('stDot').className='dot dead';}
+    // Docker not running — silent offline mode, no red scary state
+    if(!dot||!lbl)return;
+    dot.className='dot wait';
+    lbl.textContent='Offline Mode';
+    lbl.style.color='var(--amber,#F57C00)';
+    addLog('Running without Docker backend — predictions use local approximation','inf');
   });
 }
 
@@ -155,15 +172,15 @@ async function runPredict(){
     result=await r.json();
 
     if(result.error==='EXPIRED_TOKEN'||r.status===401){
-      addLog('⚠ AWS TOKEN EXPIRED — using approximation. Refresh .env!','err');
+      addLog('AWS token expired — using local approximation','inf');
       showExpiredBanner();
       result=approx(feat);
     } else if(result.error){
-      addLog('API error (using approx): '+result.error,'err');
+      addLog('Backend unavailable — using local approximation','inf');
       result=approx(feat);
     }
   }catch(e){
-    addLog('Network error — using approximation','err');
+    addLog('Offline mode — using local approximation','inf');
     result=approx(feat);
   }
 

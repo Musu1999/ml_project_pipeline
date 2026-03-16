@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>AttritionIQ — Model Monitor</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="/static/css/style.css"/>
 <style>
 #loader{animation:loaderHide 0s 1.0s forwards!important;}
@@ -18,17 +18,17 @@
 .status-card.alert{border-color:var(--red);}
 .status-card.ok{border-color:rgba(168,255,62,.3);}
 .sc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
-.sc-title{font-family:var(--mono);font-size:9px;color:var(--txt3);letter-spacing:.15em;text-transform:uppercase;}
-.sc-badge{font-family:var(--mono);font-size:9px;padding:.25rem .6rem;border:1px solid currentColor;}
+.sc-title{font-family:var(--sans);font-size:.72rem;color:var(--txt3);letter-spacing:.15em;text-transform:uppercase;}
+.sc-badge{font-family:var(--sans);font-size:.72rem;padding:.25rem .6rem;border:1px solid currentColor;}
 .sc-badge.green{color:var(--green);border-color:rgba(168,255,62,.4);}
 .sc-badge.red{color:var(--red);border-color:rgba(255,61,107,.4);}
 .sc-badge.gold{color:var(--amber);border-color:rgba(255,209,102,.4);}
 .sc-val{font-size:1.9rem;font-weight:800;letter-spacing:-.04em;margin-bottom:.25rem;}
-.sc-sub{font-family:var(--mono);font-size:9px;color:var(--txt3);}
+.sc-sub{font-family:var(--sans);font-size:.72rem;color:var(--txt3);}
 
 /* Metric gauge */
 .metric-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;}
-.metric-name{font-family:var(--mono);font-size:9px;color:var(--txt3);width:80px;flex-shrink:0;}
+.metric-name{font-family:var(--sans);font-size:.72rem;color:var(--txt3);width:80px;flex-shrink:0;}
 .metric-track{flex:1;height:6px;background:var(--surface2);position:relative;}
 .metric-fill{height:100%;transition:width 1s ease;}
 .metric-threshold{position:absolute;top:-4px;bottom:-4px;width:2px;background:rgba(255,255,255,.2);}
@@ -51,30 +51,30 @@
 .drift-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:2rem;}
 .drift-card{background:var(--surface);border:1px solid var(--border);padding:1.1rem;}
 .drift-card.warn{border-color:rgba(255,209,102,.4);}
-.dc-name{font-family:var(--mono);font-size:9px;color:var(--txt3);letter-spacing:.1em;
+.dc-name{font-family:var(--sans);font-size:.72rem;color:var(--txt3);letter-spacing:.1em;
   text-transform:uppercase;margin-bottom:.5rem;}
 .dc-status{font-family:var(--mono);font-size:11px;font-weight:700;margin-bottom:.25rem;}
-.dc-detail{font-family:var(--mono);font-size:9px;color:var(--txt3);}
+.dc-detail{font-family:var(--sans);font-size:.72rem;color:var(--txt3);}
 
 /* Drift charts grid */
 .drift-charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:2rem;}
 .drift-chart-card{background:var(--surface);border:1px solid var(--border);padding:1.25rem;}
 .drift-chart-card.full{grid-column:1/-1;}
-.drift-chart-title{font-family:var(--mono);font-size:9px;color:var(--txt3);letter-spacing:.12em;
+.drift-chart-title{font-family:var(--sans);font-size:.72rem;color:var(--txt3);letter-spacing:.12em;
   text-transform:uppercase;margin-bottom:.75rem;display:flex;align-items:center;justify-content:space-between;}
-.drift-badge{font-family:var(--mono);font-size:8px;padding:.2rem .5rem;border:1px solid currentColor;}
+.drift-badge{font-family:var(--sans);font-size:.7rem;padding:.2rem .5rem;border:1px solid currentColor;}
 .drift-badge.ok{color:var(--green);border-color:rgba(168,255,62,.35);}
 .drift-badge.warn{color:var(--amber);border-color:rgba(255,209,102,.35);}
 .drift-badge.alert{color:var(--red);border-color:rgba(255,61,107,.35);}
 .drift-stat-row{display:flex;gap:1.5rem;margin-bottom:.75rem;flex-wrap:wrap;}
 .drift-stat{flex:1;min-width:80px;}
 .drift-stat-val{font-family:var(--mono);font-size:1.1rem;font-weight:800;letter-spacing:-.02em;}
-.drift-stat-lbl{font-family:var(--mono);font-size:8px;color:var(--txt3);margin-top:.15rem;}
+.drift-stat-lbl{font-family:var(--sans);font-size:.7rem;color:var(--txt3);margin-top:.15rem;}
 @media(max-width:768px){.drift-charts-grid{grid-template-columns:1fr;}}
 
 /* Batch history */
 .batch-hist-table{width:100%;border-collapse:collapse;}
-.batch-hist-table th{font-family:var(--mono);font-size:9px;color:var(--txt3);
+.batch-hist-table th{font-family:var(--sans);font-size:.72rem;color:var(--txt3);
   letter-spacing:.1em;text-transform:uppercase;text-align:left;
   padding:.6rem .9rem;border-bottom:1px solid var(--border);}
 .batch-hist-table td{font-family:var(--mono);font-size:10px;padding:.6rem .9rem;
@@ -82,10 +82,26 @@
 .batch-hist-table tr:hover td{background:rgba(0,229,255,.02);}
 
 /* Alert banner */
-.alert-banner{background:rgba(255,61,107,.08);border:1px solid rgba(255,61,107,.3);
-  padding:1rem 1.25rem;margin-bottom:1.5rem;font-family:var(--mono);font-size:11px;
-  color:var(--red);display:none;}
-.alert-banner.show{display:block;}
+.alert-banner{
+  background:var(--red-light,#FFEBEE);border:1px solid rgba(229,57,53,.25);
+  border-radius:var(--r-sm,8px);padding:.875rem 1.25rem;
+  margin-bottom:1.25rem;font-family:var(--sans);font-size:.78rem;
+  color:var(--red,#E53935);display:none;
+  display:flex;align-items:center;justify-content:space-between;gap:.75rem;
+}
+.alert-banner.show{display:flex;}
+.alert-banner.info{
+  background:#EFF6FF;border-color:rgba(59,130,246,.25);color:#1D4ED8;
+}
+.alert-banner.ok{
+  background:#F0FDF4;border-color:rgba(34,197,94,.25);color:#15803D;
+}
+.alert-banner-close{
+  background:none;border:none;cursor:pointer;font-size:1rem;
+  color:inherit;opacity:.6;flex-shrink:0;padding:0;line-height:1;
+}
+.alert-banner-close:hover{opacity:1;}
+.alert-banner-msg{flex:1;}
 
 /* Retrain button */
 .retrain-section{background:var(--surface);border:1px solid var(--border);padding:1.5rem;
@@ -105,10 +121,10 @@
 .refresh-row{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;}
 .auto-refresh-lbl{font-family:var(--mono);font-size:10px;color:var(--txt3);}
 .auto-toggle{background:var(--surface2);border:1px solid var(--border);color:var(--txt3);
-  font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  font-family:var(--sans);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
   padding:.4rem .9rem;cursor:pointer;transition:all .2s;}
 .auto-toggle.on{border-color:var(--blue2);color:var(--blue2);}
-.last-refresh{font-family:var(--mono);font-size:9px;color:var(--txt3);}
+.last-refresh{font-family:var(--sans);font-size:.72rem;color:var(--txt3);}
 
 /* Loading skeleton */
 .skel{background:linear-gradient(90deg,var(--surface) 25%,var(--surface2) 50%,var(--surface) 75%);
@@ -200,11 +216,11 @@
         <div class="sc-val" id="epStatus" style="color:var(--amber)">—</div>
         <div class="sc-sub" id="epName">{{ endpoint_name or "NOT SET" }}</div>
         <div style="margin-top:.75rem;">
-          <div style="font-family:var(--mono);font-size:9px;color:var(--txt3);margin-bottom:.3rem;">Instance Type</div>
+          <div style="font-family:var(--sans);font-size:.72rem;color:var(--txt3);margin-bottom:.3rem;">Instance Type</div>
           <div style="font-family:var(--mono);font-size:11px;" id="epInstance">ml.t2.medium</div>
         </div>
         <div style="margin-top:.5rem;">
-          <div style="font-family:var(--mono);font-size:9px;color:var(--txt3);margin-bottom:.3rem;">Region</div>
+          <div style="font-family:var(--sans);font-size:.72rem;color:var(--txt3);margin-bottom:.3rem;">Region</div>
           <div style="font-family:var(--mono);font-size:11px;color:var(--blue2)">{{ region }}</div>
         </div>
       </div>
@@ -253,7 +269,7 @@
           </div>
           <div class="metric-val" id="valF1" style="color:var(--txt3)">—</div>
         </div>
-        <div style="margin-top:.5rem;font-family:var(--mono);font-size:8px;color:var(--txt3);">
+        <div style="margin-top:.5rem;font-family:var(--sans);font-size:.7rem;color:var(--txt3);">
           ▏ threshold line = minimum required
         </div>
       </div>
@@ -266,11 +282,11 @@
         </div>
         <div style="display:flex;align-items:flex-start;gap:1rem;">
           <div>
-            <div style="font-family:var(--mono);font-size:8px;color:var(--txt3);margin-bottom:.4rem;margin-left:84px;">Predicted</div>
+            <div style="font-family:var(--sans);font-size:.7rem;color:var(--txt3);margin-bottom:.4rem;margin-left:84px;">Predicted</div>
             <div style="display:flex;align-items:center;gap:2px;">
-              <div style="font-family:var(--mono);font-size:8px;color:var(--txt3);writing-mode:vertical-rl;transform:rotate(180deg);height:120px;display:flex;align-items:center;">Actual</div>
+              <div style="font-family:var(--sans);font-size:.7rem;color:var(--txt3);writing-mode:vertical-rl;transform:rotate(180deg);height:120px;display:flex;align-items:center;">Actual</div>
               <div>
-                <div style="display:flex;font-family:var(--mono);font-size:8px;color:var(--txt3);gap:2px;margin-bottom:2px;">
+                <div style="display:flex;font-family:var(--sans);font-size:.7rem;color:var(--txt3);gap:2px;margin-bottom:2px;">
                   <div style="width:80px;text-align:center;">No Attrition</div>
                   <div style="width:80px;text-align:center;">Attrition</div>
                 </div>
@@ -296,7 +312,7 @@
             </div>
           </div>
         </div>
-        <div style="margin-top:.75rem;font-family:var(--mono);font-size:9px;color:var(--txt3);">
+        <div style="margin-top:.75rem;font-family:var(--sans);font-size:.72rem;color:var(--txt3);">
           Specificity: <span id="valSpec" style="color:var(--blue2)">—</span>
         </div>
       </div>
@@ -307,7 +323,7 @@
          DATA DRIFT VISUALISATION — Full interactive charts
     ═══════════════════════════════════════════════════════ -->
     <div class="sec-title" style="margin-bottom:.5rem;">DATA DRIFT VISUALISATION</div>
-    <div style="font-family:var(--mono);font-size:9px;color:var(--txt3);margin-bottom:1.25rem;">
+    <div style="font-family:var(--sans);font-size:.72rem;color:var(--txt3);margin-bottom:1.25rem;">
       Comparing current batch/production distribution against IBM HR Analytics training baseline.
       Alerts fire when any feature drifts &gt;20% from baseline.
     </div>
@@ -481,8 +497,14 @@ async function renderMonitor(d){
   const alerts=d.alerts||[];
   const ab=document.getElementById('alertBanner');
   if(alerts.length>0){
-    ab.innerHTML='⚠ ALERTS: '+alerts.join(' · ');
-    ab.classList.add('show');
+    // Decide severity: token/credential errors = red, offline/cached = blue info
+    const isCredError=alerts.some(a=>/(expired|token|credential|missing)/i.test(a));
+    const isCached=alerts.some(a=>/(cached|reach API|offline)/i.test(a));
+    const icon=isCredError?'⚠️':isCached?'ℹ️':'⚠️';
+    const levelClass=isCredError?'':'info';
+    ab.className='alert-banner show '+levelClass;
+    ab.innerHTML=`<span class="alert-banner-msg">${icon} ${alerts.join(' · ')}</span>
+      <button class="alert-banner-close" onclick="this.closest('.alert-banner').classList.remove('show')" title="Dismiss">✕</button>`;
   } else {
     ab.classList.remove('show');
   }
@@ -494,19 +516,27 @@ async function renderMonitor(d){
   // ── Endpoint ──
   const ep=d.endpoint||{};
   const healthy=ep.healthy||false;
+  const offline=ep._offline||false;  // graceful offline (no Docker), not a real error
   const epCard=document.getElementById('epCard');
-  epCard.className='status-card '+(healthy?'ok':'alert');
-  badge('epBadge',healthy?'IN SERVICE':ep.status||'UNKNOWN',healthy?'green':'red');
+  epCard.className='status-card '+(healthy?'ok':offline?'':'alert');
+  if(healthy){
+    badge('epBadge','IN SERVICE','green');
+  } else if(offline){
+    badge('epBadge','OFFLINE MODE','gold');
+  } else {
+    badge('epBadge',ep.status||'UNKNOWN','red');
+  }
   const epStatus=document.getElementById('epStatus');
-  epStatus.textContent=ep.status||'—';
-  epStatus.style.color=healthy?'var(--green)':'var(--red)';
+  epStatus.textContent=offline?'Cached Metrics':ep.status||'—';
+  epStatus.style.color=healthy?'var(--green)':offline?'var(--amber,#F57C00)':'var(--red)';
   document.getElementById('epInstance').textContent=ep.instance_type||'ml.t2.medium';
 
   // Update header badge
   const dot=document.getElementById('stDot');
   const lbl=document.getElementById('stLabel');
-  if(healthy){dot.className='dot live';lbl.textContent='ENDPOINT LIVE';lbl.style.color='var(--green)';}
-  else{dot.className='dot dead';lbl.textContent=ep.status||'OFFLINE';lbl.style.color='var(--red)';}
+  if(healthy){dot.className='dot live';lbl.textContent='Endpoint Live';lbl.style.color='var(--green,#2E7D32)';}
+  else if(offline){dot.className='dot wait';lbl.textContent='Offline Mode';lbl.style.color='var(--amber,#F57C00)';}
+  else{dot.className='dot wait';lbl.textContent=ep.status||'Unavailable';lbl.style.color='var(--amber,#F57C00)';}
 
   // ── Metrics ──
   const m=d.metrics||{};
@@ -617,10 +647,14 @@ async function renderMonitor(d){
       (d.metrics&&d.metrics.error)?'Could not load from S3':'evaluation_results.json found');
     if(h.token_valid===false){
       const ab=document.getElementById('alertBanner');
-      if(ab){ab.innerHTML='⚠ AWS TOKEN EXPIRED — Refresh from AWS Academy → Paste into .env → docker compose up -d';ab.classList.add('show');}
-      log('⚠ AWS token expired','err');
+      if(ab){
+        ab.className='alert-banner show info';
+        ab.innerHTML=`<span class="alert-banner-msg">🔑 AWS session token expired — refresh credentials from AWS Academy → paste into <code>.env</code> → restart Docker</span>
+          <button class="alert-banner-close" onclick="this.closest('.alert-banner').classList.remove('show')" title="Dismiss">✕</button>`;
+      }
+      log('AWS token expired — refresh credentials','inf');
     }
-  } catch(e){ log('Health check failed: '+e.message,'err'); }
+  } catch(e){ log('Health check skipped: '+e.message,'inf'); }
 
   // ── Render data drift charts ──
   renderDriftCharts(d);
@@ -629,13 +663,25 @@ async function renderMonitor(d){
 }
 
 function renderFallback(){
+  // API unreachable — show cached training metrics with a calm info notice (not an error)
   renderMonitor({
-    endpoint:{name:'mousumi-hr-attrition-endpoint',status:'Unknown',healthy:false,instance_type:'ml.t2.medium'},
-    metrics:{accuracy:0.871,roc_auc:0.823,recall:0.584,precision:0.762,f1:0.661,specificity:0.942,
+    endpoint:{
+      name:'mousumi-hr-attrition-endpoint',
+      status:'Offline / No Connection',
+      healthy:false,
+      instance_type:'ml.t2.medium',
+      region:'ap-south-1',
+      _offline:true
+    },
+    metrics:{
+      accuracy:0.871,roc_auc:0.823,recall:0.584,precision:0.762,
+      f1:0.661,specificity:0.942,
       confusion_matrix:{tn:1176,fp:63,fn:104,tp:151},
-      accuracy_ok:true,roc_auc_ok:true,recall_ok:true,source:'fallback'},
+      accuracy_ok:true,roc_auc_ok:true,recall_ok:true,
+      source:'fallback'
+    },
     drift:{},batches:[],retrain:false,
-    alerts:['Could not reach API — showing cached training metrics']
+    alerts:['Displaying cached training metrics — connect Docker to refresh live data']
   });
 }
 
