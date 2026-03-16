@@ -35,22 +35,61 @@ function sig(x){return 1/(1+Math.exp(-x));}
  */
 function approx(f){
   const [ht,ot,age,inc,ms,gm,yr,sat]=f;
-  let s=-1.65; // base 16.1%
+  let s=-1.65;
 
-  if(ot===1) s+=2.10;                       // overtime — strongest signal
-  if(ms===1) s+=0.95;                       // single
-  s+=(2.5-sat)*0.75;                        // sat=1→+1.125, sat=4→-1.125
-  s-=Math.min(inc,20000)/20000*3.00;        // income: 2800→-0.42, 9000→-1.35, 14000→-2.10
-  s-=Math.min(yr,20)/20*2.20;              // years: 1→-0.11, 10→-1.10, 20→-2.20
-  s-=Math.min(Math.max(age-18,0),32)/32*0.80; // age
-  if(ht===1) s-=1.30;                       // tenure+sat combined
+  if(ot===1) s+=2.10;
+  if(ms===1) s+=0.95;
+  s+=(2.5-sat)*0.75;
+  s-=Math.min(inc,20000)/20000*3.00;
+  s-=Math.min(yr,20)/20*2.20;
+  s-=Math.min(Math.max(age-18,0),32)/32*0.80;
+  if(ht===1) s-=1.30;
   if(gm===1) s-=0.15;
 
   const p=Math.min(0.96,Math.max(0.04,sig(s)));
-  return{attrition_probability:+p.toFixed(5),prediction:p>=0.5?1:0,mode:'approximation',
-         probabilities:{'No Attrition':+(1-p).toFixed(5),'Attrition':+p.toFixed(5)}};
-}
+  const THRESHOLD=0.35;
+  const pred=p>=THRESHOLD?1:0;
 
+  // Top risk factors
+  const factors=[];
+  if(ot===1)   factors.push({factor:'Works Overtime',impact:'Very High',weight:0.312});
+  if(sat<=2)   factors.push({factor:'Low Job Satisfaction ('+sat+'/4)',impact:'High',weight:0.098});
+  if(inc<3500) factors.push({factor:'Below-average Income',impact:'High',weight:0.148});
+  if(ms===1)   factors.push({factor:'Single Marital Status',impact:'Medium',weight:0.062});
+  if(yr<3)     factors.push({factor:'New to Company (<3 yrs)',impact:'Medium',weight:0.094});
+  if(age<30)   factors.push({factor:'Young Employee (<30)',impact:'Medium',weight:0.121});
+  if(ht===1)   factors.push({factor:'High Tenure + Satisfied',impact:'Protective',weight:-0.201});
+  factors.sort((a,b)=>Math.abs(b.weight)-Math.abs(a.weight));
+
+  // Action recommendations
+  const actions=[];
+  if(p>=0.70){
+    actions.push('🔴 URGENT: Schedule 1-on-1 with manager within this week');
+    if(ot===1)   actions.push('Review overtime load — assign workload buffer or additional resource');
+    if(inc<4000) actions.push('Initiate compensation review — salary below retention threshold');
+    if(sat<=2)   actions.push('Conduct confidential engagement survey immediately');
+    actions.push('Consider retention offer: role flexibility, learning budget, or promotion path');
+  } else if(p>=THRESHOLD){
+    actions.push('🟡 WATCH: Add to quarterly check-in priority list');
+    if(ot===1) actions.push('Monitor overtime pattern — discuss workload balance');
+    if(sat<=3)  actions.push('Discuss growth opportunities and career development plan');
+    actions.push('Ensure recognition for recent contributions');
+  } else {
+    actions.push('🟢 STABLE: Include in standard engagement programme');
+    if(ht===1) actions.push('Leverage as mentor — high tenure + satisfied employees reduce team attrition');
+    actions.push('Maintain regular manager check-ins to sustain satisfaction');
+  }
+
+  return{
+    attrition_probability:+p.toFixed(5),
+    prediction:pred,
+    mode:'approximation',
+    threshold_used:THRESHOLD,
+    top_risk_factors:factors.slice(0,3),
+    action_recommendations:actions,
+    probabilities:{'No Attrition':+(1-p).toFixed(5),'Attrition':+p.toFixed(5)}
+  };
+}
 /* ── Log ── */
 function addLog(msg,cls=''){
   const t=document.getElementById('term');
@@ -139,7 +178,7 @@ function showResult(result){
   box.classList.add('show');
   const v=document.getElementById('rV');
   v.textContent=verdict;v.className='result-verdict '+cls;
-  document.getElementById('rP').textContent='Attrition probability: '+apPct+'%';
+  document.getElementById('rP').textContent='Attrition probability: '+apPct+'%  ·  Threshold: '+(result.threshold_used||0.35);
   const bar=document.getElementById('rBar');
   bar.className='bar-fill '+(pred?'high':'low');
   setTimeout(()=>{bar.style.width=apPct+'%';},50);
@@ -149,10 +188,40 @@ function showResult(result){
   const rRisk=document.getElementById('rRisk');
   rRisk.textContent=riskTxt;rRisk.style.color=riskColor;
   const rMode=document.getElementById('rMode');
-  rMode.textContent=mode.includes('sagemaker')?'✅ SAGEMAKER':'⚡ APPROX';
+  rMode.textContent=mode.includes('sagemaker')?'✅ SageMaker Live':'⚡ Local Approx';
   rMode.style.color=mode.includes('sagemaker')?'var(--green)':'var(--amber,#F57C00)';
-}
 
+  // -- Top Risk Factors --
+  const factors=result.top_risk_factors||[];
+  const fw=document.getElementById('rFactorsWrap');
+  const fc=document.getElementById('rFactors');
+  if(factors.length>0&&fw&&fc){
+    fc.innerHTML='';
+    factors.forEach(f=>{
+      const ic=f.impact==='Very High'?'var(--red)':f.impact==='High'?'#ff8c42':f.impact==='Protective'?'var(--green,#2E7D32)':'var(--amber,#F57C00)';
+      const d=document.createElement('div');
+      d.style.cssText='display:flex;align-items:center;justify-content:space-between;background:var(--surface2,#F7FAFD);padding:.45rem .75rem;border-radius:6px;border:1px solid var(--border,#DDE6F0)';
+      d.innerHTML=`<span style="font-size:.78rem;color:var(--txt)">${f.factor}</span><span style="font-size:.65rem;font-family:var(--mono);font-weight:600;color:${ic};padding:.15rem .45rem;background:${ic}22;border-radius:99px">${f.impact}</span>`;
+      fc.appendChild(d);
+    });
+    fw.style.display='block';
+  } else if(fw){fw.style.display='none';}
+
+  // -- Action Recommendations --
+  const actions=result.action_recommendations||[];
+  const aw=document.getElementById('rActionsWrap');
+  const ac=document.getElementById('rActions');
+  if(actions.length>0&&aw&&ac){
+    ac.innerHTML='';
+    actions.forEach(a=>{
+      const d=document.createElement('div');
+      d.style.cssText='font-size:.78rem;padding:.5rem .75rem;background:var(--surface2,#F7FAFD);border-radius:6px;border-left:3px solid var(--blue,#1565C0);line-height:1.5;color:var(--txt)';
+      d.textContent=a;
+      ac.appendChild(d);
+    });
+    aw.style.display='block';
+  } else if(aw){aw.style.display='none';}
+}
 /* ── Predict ── */
 async function runPredict(){
   const feat=[
