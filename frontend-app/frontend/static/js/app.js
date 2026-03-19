@@ -50,34 +50,71 @@ function approx(f){
   const THRESHOLD=0.35;
   const pred=p>=THRESHOLD?1:0;
 
-  // Top risk factors
+  /* ── Top risk factors ── */
   const factors=[];
-  if(ot===1)   factors.push({factor:'Works Overtime',impact:'Very High',weight:0.312});
-  if(sat<=2)   factors.push({factor:'Low Job Satisfaction ('+sat+'/4)',impact:'High',weight:0.098});
-  if(inc<3500) factors.push({factor:'Below-average Income',impact:'High',weight:0.148});
-  if(ms===1)   factors.push({factor:'Single Marital Status',impact:'Medium',weight:0.062});
-  if(yr<3)     factors.push({factor:'New to Company (<3 yrs)',impact:'Medium',weight:0.094});
-  if(age<30)   factors.push({factor:'Young Employee (<30)',impact:'Medium',weight:0.121});
-  if(ht===1)   factors.push({factor:'High Tenure + Satisfied',impact:'Protective',weight:-0.201});
+  if(ot===1)   factors.push({factor:'Works Overtime',              impact:'Very High', weight:0.312});
+  if(sat<=2)   factors.push({factor:'Low Job Satisfaction ('+sat+'/4)', impact:'High', weight:0.098});
+  if(inc<3500) factors.push({factor:'Below-average Income',        impact:'High',      weight:0.148});
+  if(ms===1)   factors.push({factor:'Single Marital Status',       impact:'Medium',    weight:0.062});
+  if(yr<3)     factors.push({factor:'New to Company (<3 yrs)',     impact:'Medium',    weight:0.094});
+  if(age<30)   factors.push({factor:'Young Employee (<30)',        impact:'Medium',    weight:0.121});
+  if(ht===1)   factors.push({factor:'High Tenure + Satisfied',     impact:'Protective',weight:-0.201});
   factors.sort((a,b)=>Math.abs(b.weight)-Math.abs(a.weight));
 
-  // Action recommendations
+  /* ── Action recommendations — 4 bands, feature-aware ──
+   *  Mirrors get_action_recommendations() in api.py exactly so that
+   *  the local approximation fallback produces identical logic to the
+   *  live SageMaker response.
+   *  Bands:  VERY HIGH ≥0.70 | HIGH ≥0.50 | MEDIUM ≥0.35 | LOW <0.35
+   */
   const actions=[];
+
   if(p>=0.70){
-    actions.push('🔴 URGENT: Schedule 1-on-1 with manager within this week');
-    if(ot===1)   actions.push('Review overtime load — assign workload buffer or additional resource');
-    if(inc<4000) actions.push('Initiate compensation review — salary below retention threshold');
-    if(sat<=2)   actions.push('Conduct confidential engagement survey immediately');
-    actions.push('Consider retention offer: role flexibility, learning budget, or promotion path');
+    /* ── VERY HIGH ── */
+    actions.push('🔴 URGENT: Schedule a private 1-on-1 with the manager within 48 hours');
+    if(ot===1)        actions.push('Overtime is a top attrition driver — immediately review workload and redistribute tasks or hire contract support');
+    if(inc<3500)      actions.push('Salary is critically below market — escalate to compensation team for an off-cycle review this week');
+    else if(inc<5000) actions.push('Initiate a compensation benchmarking review — salary may be below peer retention levels');
+    if(sat<=1)        actions.push('Job satisfaction is at the lowest level (1/4) — conduct a confidential stay interview immediately');
+    else if(sat===2)  actions.push('Low job satisfaction detected — explore role redesign, project rotation, or team change');
+    if(yr<2)          actions.push('Employee is in a high-churn early tenure window — assign a senior buddy and create a 6-month engagement milestone plan');
+    if(ms===1&&age<32)actions.push('Young single employees are most mobile — discuss personalised career growth roadmap and skill development funding');
+    if(ht===0)        actions.push('No strong tenure-satisfaction anchor — consider fast-tracking a promotion discussion or stretch assignment');
+    actions.push('Prepare a structured retention offer: title progression, hybrid flexibility, L&D budget, or equity/bonus commitment');
+
+  } else if(p>=0.50){
+    /* ── HIGH ── */
+    actions.push('🟠 HIGH RISK: Prioritise this employee for manager attention within this fortnight');
+    if(ot===1)        actions.push('Overtime pattern is contributing to risk — discuss sustainable workload boundaries and agree on a cap');
+    if(inc<4500)      actions.push('Flag for next compensation cycle — below-average income is a measurable flight risk factor');
+    if(sat<=2)        actions.push('Schedule an engagement conversation — understand specific dissatisfiers before they become resignation triggers');
+    if(yr<3)          actions.push('Still in the critical early-tenure phase — confirm the employee\'s career trajectory and growth expectations are being met');
+    if(ms===1)        actions.push('Single employees prioritise career advancement — ensure visibility of promotion or lateral growth opportunities');
+    if(age<30)        actions.push('Younger employees respond strongly to skill-building investments — offer a relevant certification or conference budget');
+    if(ht===1)        actions.push('Positive signal: high tenure + satisfaction. Reinforce what is working and use this employee as a team anchor');
+    actions.push('Document key person risk — ensure knowledge transfer plan exists for business continuity');
+
   } else if(p>=THRESHOLD){
-    actions.push('🟡 WATCH: Add to quarterly check-in priority list');
-    if(ot===1) actions.push('Monitor overtime pattern — discuss workload balance');
-    if(sat<=3)  actions.push('Discuss growth opportunities and career development plan');
-    actions.push('Ensure recognition for recent contributions');
+    /* ── MEDIUM ── */
+    actions.push('🟡 WATCH: Include in next monthly manager check-in with a structured agenda');
+    if(ot===1)        actions.push('Monitor overtime frequency — sustained overwork without recognition is a slow-burn attrition driver');
+    if(sat===2)       actions.push('Satisfaction is below average — proactively ask about project preferences and team dynamics');
+    else if(sat===3)  actions.push('Satisfaction is moderate — identify what would move this employee from \'content\' to \'committed\'');
+    if(inc<5000)      actions.push('Review compensation at the next cycle — staying competitive reduces medium-risk escalation');
+    if(yr<3)          actions.push('Confirm onboarding goals have been met and that the employee has a clear development plan for year 2–3');
+    if(ms===1&&age<35)actions.push('Discuss medium-term career goals — ensure the role offers the growth trajectory single employees typically seek');
+    if(ht===1)        actions.push('High-tenure satisfaction is a stabilising factor — acknowledge this employee\'s institutional contribution publicly');
+    actions.push('Ensure recent work is recognised — a lack of visible appreciation is the most common untracked medium-risk driver');
+
   } else {
-    actions.push('🟢 STABLE: Include in standard engagement programme');
-    if(ht===1) actions.push('Leverage as mentor — high tenure + satisfied employees reduce team attrition');
-    actions.push('Maintain regular manager check-ins to sustain satisfaction');
+    /* ── LOW ── */
+    actions.push('🟢 STABLE: No immediate intervention needed — maintain standard engagement cadence');
+    if(ht===1)        actions.push('High tenure + satisfaction: consider as a mentor or culture ambassador — these employees significantly reduce team attrition by 12–18%');
+    if(sat===4)       actions.push('Highest satisfaction tier — solicit this employee\'s input in team culture initiatives and hiring decisions');
+    else if(sat===3)  actions.push('Good satisfaction level — periodic check-ins every quarter are sufficient to keep this profile stable');
+    if(yr>=5)         actions.push('Long-tenured and stable — document their institutional knowledge and involve them in onboarding newer team members');
+    if(ot===0&&inc>=5000) actions.push('Healthy work-life balance and competitive income — maintain these conditions as a baseline retention guarantee');
+    actions.push('Flag for recognition in next performance cycle — proactive appreciation prevents passive disengagement');
   }
 
   return{
@@ -191,12 +228,13 @@ function showResult(result){
   rMode.textContent=mode.includes('sagemaker')?'✅ SageMaker Live':'⚡ Local Approx';
   rMode.style.color=mode.includes('sagemaker')?'var(--green)':'var(--amber,#F57C00)';
 
-  // -- Top Risk Factors --
+  /* ── Top Risk Factors — reset then re-render ── */
   const factors=result.top_risk_factors||[];
   const fw=document.getElementById('rFactorsWrap');
   const fc=document.getElementById('rFactors');
+  if(fw) fw.style.display='none';          // always hide first
+  if(fc) fc.innerHTML='';                  // always clear stale items
   if(factors.length>0&&fw&&fc){
-    fc.innerHTML='';
     factors.forEach(f=>{
       const ic=f.impact==='Very High'?'var(--red)':f.impact==='High'?'#ff8c42':f.impact==='Protective'?'var(--green,#2E7D32)':'var(--amber,#F57C00)';
       const d=document.createElement('div');
@@ -205,22 +243,26 @@ function showResult(result){
       fc.appendChild(d);
     });
     fw.style.display='block';
-  } else if(fw){fw.style.display='none';}
+  }
 
-  // -- Action Recommendations --
+  /* ── Action Recommendations — reset then re-render ── */
   const actions=result.action_recommendations||[];
   const aw=document.getElementById('rActionsWrap');
   const ac=document.getElementById('rActions');
+  if(aw) aw.style.display='none';          // always hide first
+  if(ac) ac.innerHTML='';                  // always clear stale items
   if(actions.length>0&&aw&&ac){
-    ac.innerHTML='';
-    actions.forEach(a=>{
+    actions.forEach((a,i)=>{
       const d=document.createElement('div');
-      d.style.cssText='font-size:.78rem;padding:.5rem .75rem;background:var(--surface2,#F7FAFD);border-radius:6px;border-left:3px solid var(--blue,#1565C0);line-height:1.5;color:var(--txt)';
+      /* First item = risk-level headline — bold it */
+      d.style.cssText='font-size:.78rem;padding:.5rem .75rem;background:var(--surface2,#F7FAFD);'+
+        'border-radius:6px;border-left:3px solid var(--blue,#1565C0);line-height:1.5;color:var(--txt);'+
+        (i===0?'font-weight:600;':'');
       d.textContent=a;
       ac.appendChild(d);
     });
     aw.style.display='block';
-  } else if(aw){aw.style.display='none';}
+  }
 }
 /* ── Predict ── */
 async function runPredict(){
