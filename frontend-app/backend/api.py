@@ -73,30 +73,169 @@ def get_top_risk_factors(features):
     return factors[:3]
 
 def get_action_recommendations(prob, features):
-    """Return HR action items based on risk level and feature profile."""
+    """
+    Return HR action items driven by BOTH risk band AND specific feature profile.
+    Every feature combination within each band produces distinct recommendations
+    so that no two meaningfully different employees receive the same advice.
+    Bands: VERY HIGH >=0.70 | HIGH >=0.50 | MEDIUM >=0.35 | LOW <0.35
+    """
     ht, ot, age, inc, ms, gm, yr, sat = features
+    THRESHOLD = 0.35
     actions = []
+
+    # ── VERY HIGH (>=0.70) ───────────────────────────────────────
     if prob >= 0.70:
-        actions.append("🔴 URGENT: Schedule 1-on-1 with manager within this week")
-        if ot == 1:
-            actions.append("Review overtime load — assign workload buffer or additional resource")
+        actions.append("🔴 URGENT: Book a private, confidential 1-on-1 within 48 hours — not email, not a group meeting")
+
+        if ot == 1 and inc < 3500:
+            actions.append("Double pressure: overtime AND critically low pay — address both simultaneously or this employee will not stay past 30 days")
+        elif ot == 1:
+            actions.append("Overtime is the #1 attrition driver here — immediately cap hours, redistribute workload, or bring in contract support this sprint")
+        elif inc < 3500:
+            actions.append(f"Salary at ₹{int(inc):,} is critically below market — escalate to compensation team for an emergency off-cycle review today")
+
+        if inc >= 3500 and inc < 5000 and ot == 0:
+            actions.append("Income is below peer retention levels — flag for next compensation cycle with urgency note; consider spot bonus to bridge the gap")
+
+        if sat == 1:
+            actions.append("Job satisfaction at floor level (1/4) — this is a resignation-imminent signal. Conduct a stay interview this week, not a survey")
+        elif sat == 2:
+            actions.append("Low satisfaction (2/4) — identify the specific dissatisfier: manager, role, team, or workload. Do not guess; ask directly")
+
+        if yr < 2:
+            actions.append("Less than 2 years tenure — early leavers rarely recover. Assign a senior buddy today and create a visible 90-day milestone plan")
+        elif 2 <= yr < 4:
+            actions.append("3–4 year tenure is a known flight risk window — confirm promotion or role evolution is on the roadmap within 6 months")
+
+        if ms == 1 and age < 30:
+            actions.append("Young, single, and high-risk: this profile has the highest market mobility. A personalised career roadmap discussion is non-negotiable")
+        elif ms == 1 and age >= 30:
+            actions.append("Single employees at this risk level are actively comparing market options — a concrete growth offer will outperform a pay raise alone")
+
+        if age < 25:
+            actions.append("Employees under 25 leave for growth, not just money — offer a stretch project, mentorship pairing, or visible role upgrade immediately")
+
+        if ht == 0 and yr >= 3:
+            actions.append(f"No tenure-satisfaction anchor despite {int(yr)} years — something eroded their engagement. Find the inflection point in this week's 1-on-1")
+
+        actions.append("Prepare a structured retention package before the meeting: title change, hybrid policy, L&D budget, or 6-month bonus commitment")
+
+    # ── HIGH (0.50–0.69) ─────────────────────────────────────────
+    elif prob >= 0.50:
+        actions.append("🟠 HIGH RISK: Manager must engage personally within this fortnight — do not delegate to HR alone")
+
+        if ot == 1 and sat <= 2:
+            actions.append("Overtime + low satisfaction is a compounding combination — tackle workload relief first; satisfaction rarely recovers under sustained pressure")
+        elif ot == 1:
+            actions.append("Overtime is elevating risk — agree on a realistic weekly hours ceiling and check in after 2 weeks to confirm compliance")
+        elif sat <= 2:
+            actions.append(f"Satisfaction at {int(sat)}/4 without overtime suggests the issue is role or culture, not workload — explore internal transfer options")
+
         if inc < 4000:
-            actions.append("Initiate compensation review — salary below retention threshold")
-        if sat <= 2:
-            actions.append("Conduct confidential engagement survey immediately")
-        actions.append("Consider retention offer: role flexibility, learning budget, or promotion path")
-    elif prob >= 0.40:
-        actions.append("🟡 WATCH: Add to quarterly check-in priority list")
-        if ot == 1:
-            actions.append("Monitor overtime pattern — discuss workload balance")
-        if sat <= 3:
-            actions.append("Discuss growth opportunities and career development plan")
-        actions.append("Ensure recognition for recent contributions")
-    else:
-        actions.append("🟢 STABLE: Include in standard engagement programme")
+            actions.append(f"Pay at ₹{int(inc):,} is a flight risk — request early placement in the next compensation review cycle")
+        elif 4000 <= inc < 5500:
+            actions.append("Income is competitive but not strong — ensure the employee knows what the path to the next salary band looks like")
+
+        if yr < 3:
+            actions.append(f"Early tenure ({int(yr)} yrs) with high risk — verify their onboarding expectations were met and their manager relationship is healthy")
+        elif 3 <= yr < 6:
+            actions.append(f"{int(yr)}-year mark is a common decision point — ensure a promotion or role evolution conversation has happened in the last 6 months")
+        elif yr >= 6:
+            actions.append("Long tenure with rising risk often signals stagnation — discuss a lateral move, new domain, or leadership track this quarter")
+
+        if ms == 1:
+            actions.append("Single employees prioritise advancement over stability — make the growth trajectory explicit and time-bound")
+
+        if age < 30 and sat >= 3:
+            actions.append("Young employee with decent satisfaction but rising risk — likely being approached externally; ask directly and counter with opportunity")
+        elif age >= 40 and sat <= 2:
+            actions.append("Experienced employee with low satisfaction — this profile often leaves quietly; a senior leader conversation carries more weight than HR")
+
         if ht == 1:
-            actions.append("Leverage as mentor — high tenure + satisfied employees reduce team attrition")
-        actions.append("Maintain regular manager check-ins to sustain satisfaction")
+            actions.append("High tenure + satisfaction is a stabilising signal — reinforce what is working and ensure nothing is about to change for the worse")
+
+        actions.append("Document this as a key-person risk — prepare a basic knowledge transfer plan as a contingency measure")
+
+    # ── MEDIUM (0.35–0.49) ───────────────────────────────────────
+    elif prob >= THRESHOLD:
+        actions.append("🟡 WATCH: Schedule a structured monthly check-in — not a status update, a genuine career conversation")
+
+        if ot == 1 and yr < 4:
+            actions.append("Overtime in early career is a slow burn — acknowledge the extra effort explicitly; unrecognised overwork is a top medium-risk escalator")
+        elif ot == 1 and yr >= 4:
+            actions.append(f"Sustained overtime for a {int(yr)}-year employee suggests structural understaffing — address at team level, not just individually")
+        elif ot == 0 and sat <= 2:
+            actions.append("Low satisfaction without overtime suggests the issue is engagement, not workload — explore what would make the role more meaningful")
+
+        if sat == 2:
+            actions.append("Satisfaction at 2/4 is a leading indicator — ask about specific project preferences and team dynamics before it becomes a firm decision to leave")
+        elif sat == 3:
+            actions.append("Satisfaction is neutral (3/4) — identify what would shift this employee from 'content' to 'committed'; small targeted changes have high impact here")
+        elif sat == 4 and prob >= THRESHOLD:
+            actions.append("High satisfaction but still medium risk — the pull is likely external (market offer, career ceiling). Ask directly about their 2-year plan")
+
+        if inc < 4500 and ot == 0:
+            actions.append("Below-average income without overtime pressure — ensure compensation is reviewed at the next cycle before dissatisfaction compounds")
+        elif inc < 4500 and ot == 1:
+            actions.append("Overtime with below-average pay is a clear value mismatch — prioritise pay review and discuss comp-for-hours explicitly")
+        elif 4500 <= inc < 6000:
+            actions.append("Income is adequate but not retentive at this risk level — visibility of the next salary milestone will help more than the salary itself")
+
+        if yr < 3:
+            actions.append(f"Year {int(yr)} is still formative — confirm the employee's original career expectations are being met; course-correct now if not")
+        elif 3 <= yr < 5:
+            actions.append("Approaching the 3–5 year inflection point — proactively open the promotion or growth conversation before they open it with a resignation")
+
+        if ms == 1 and age < 35:
+            actions.append("Single employee in their early-to-mid career: growth and title matter more than perks — make the next step concrete and achievable")
+
+        if age >= 35 and sat <= 3 and ot == 0:
+            actions.append("Mid-career with moderate satisfaction — explore whether the role still offers the challenge level this employee needs; stagnation is silent")
+
+        if ht == 1:
+            actions.append("Tenure-satisfaction combination is protective — publicly acknowledge their institutional value; recognition costs nothing and reduces this risk band significantly")
+
+        actions.append("Ensure the last 60 days of work have been visibly recognised — unacknowledged contributions are the most common untracked driver of medium-risk escalation")
+
+    # ── LOW (<0.35) ───────────────────────────────────────────────
+    else:
+        actions.append("🟢 STABLE: No immediate action needed — maintain standard quarterly engagement rhythm")
+
+        if ht == 1 and sat == 4:
+            actions.append("Exemplary profile: high tenure + top satisfaction — nominate as a culture anchor or onboarding mentor to deepen their organisational investment")
+        elif ht == 1 and sat == 3:
+            actions.append("Solid tenure with good satisfaction — a low-cost way to keep this profile stable is a public recognition moment or a new responsibility")
+        elif ht == 1:
+            actions.append("Long tenure is a stabilising force — ensure nothing structurally changes for this employee (manager, team, role scope) without prior discussion")
+
+        if sat == 4 and ot == 0:
+            actions.append("Highest satisfaction + no overtime: this is your benchmark employee — understand what makes this role work and replicate it for others")
+        elif sat == 4 and ot == 1:
+            actions.append("Top satisfaction despite overtime is unusual — monitor hours carefully; sustained overload erodes even the most engaged employees over time")
+        elif sat == 3 and ot == 0:
+            actions.append("Steady and stable — a quarterly career conversation is sufficient; ask what would make the role a 4/4, then act on it")
+
+        if inc >= 6000 and yr >= 5:
+            actions.append("Well-compensated and established — retain by offering visibility: cross-functional projects, leadership panels, or external conference representation")
+        elif 4500 <= inc < 6000 and yr >= 3:
+            actions.append("Good standing overall — ensure the next salary step is on the roadmap so compensation doesn't become a surprise issue at the 2-year mark")
+
+        if yr >= 10:
+            actions.append(f"{int(yr)}-year veteran: protect this knowledge base — involve them in documentation, mentoring, and institutional memory initiatives")
+        elif yr >= 5:
+            actions.append(f"Established {int(yr)}-year employee — involve in team decisions and onboarding to deepen their sense of ownership and belonging")
+
+        if age >= 40 and sat >= 3 and ot == 0:
+            actions.append("Experienced, satisfied, and balanced — this profile rarely leaves; maintain the conditions and ensure manager continuity")
+
+        if ms == 0 and inc >= 5000 and sat >= 3:
+            actions.append("Stable personal and professional profile — a light-touch annual career review is all that is needed to keep this employee on track")
+
+        if ot == 0 and inc >= 5000:
+            actions.append("Healthy work-life balance and competitive income — these two conditions are your strongest retention levers; protect both proactively")
+
+        actions.append("Flag for positive recognition in the next performance cycle — appreciated employees at this risk level have near-zero voluntary attrition")
+
     return actions
 
 def call_endpoint(features, e):

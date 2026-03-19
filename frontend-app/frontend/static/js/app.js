@@ -50,71 +50,176 @@ function approx(f){
   const THRESHOLD=0.35;
   const pred=p>=THRESHOLD?1:0;
 
-  /* ── Top risk factors ── */
+  // Top risk factors
   const factors=[];
-  if(ot===1)   factors.push({factor:'Works Overtime',              impact:'Very High', weight:0.312});
-  if(sat<=2)   factors.push({factor:'Low Job Satisfaction ('+sat+'/4)', impact:'High', weight:0.098});
-  if(inc<3500) factors.push({factor:'Below-average Income',        impact:'High',      weight:0.148});
-  if(ms===1)   factors.push({factor:'Single Marital Status',       impact:'Medium',    weight:0.062});
-  if(yr<3)     factors.push({factor:'New to Company (<3 yrs)',     impact:'Medium',    weight:0.094});
-  if(age<30)   factors.push({factor:'Young Employee (<30)',        impact:'Medium',    weight:0.121});
-  if(ht===1)   factors.push({factor:'High Tenure + Satisfied',     impact:'Protective',weight:-0.201});
+  if(ot===1)   factors.push({factor:'Works Overtime',impact:'Very High',weight:0.312});
+  if(sat<=2)   factors.push({factor:'Low Job Satisfaction ('+sat+'/4)',impact:'High',weight:0.098});
+  if(inc<3500) factors.push({factor:'Below-average Income',impact:'High',weight:0.148});
+  if(ms===1)   factors.push({factor:'Single Marital Status',impact:'Medium',weight:0.062});
+  if(yr<3)     factors.push({factor:'New to Company (<3 yrs)',impact:'Medium',weight:0.094});
+  if(age<30)   factors.push({factor:'Young Employee (<30)',impact:'Medium',weight:0.121});
+  if(ht===1)   factors.push({factor:'High Tenure + Satisfied',impact:'Protective',weight:-0.201});
   factors.sort((a,b)=>Math.abs(b.weight)-Math.abs(a.weight));
 
-  /* ── Action recommendations — 4 bands, feature-aware ──
-   *  Mirrors get_action_recommendations() in api.py exactly so that
-   *  the local approximation fallback produces identical logic to the
-   *  live SageMaker response.
-   *  Bands:  VERY HIGH ≥0.70 | HIGH ≥0.50 | MEDIUM ≥0.35 | LOW <0.35
-   */
+  // ── Action Recommendations ──────────────────────────────────────
+  // Every band checks EACH feature independently so that two employees
+  // in the same risk band get different, specific recommendations.
+  // Features: ht=HighTenure_Satisfied, ot=OverTime, age, inc=MonthlyIncome,
+  //           ms=MaritalStatus_Single, gm=Gender_Male, yr=YearsAtCompany, sat=JobSatisfaction
   const actions=[];
 
   if(p>=0.70){
-    /* ── VERY HIGH ── */
-    actions.push('🔴 URGENT: Schedule a private 1-on-1 with the manager within 48 hours');
-    if(ot===1)        actions.push('Overtime is a top attrition driver — immediately review workload and redistribute tasks or hire contract support');
-    if(inc<3500)      actions.push('Salary is critically below market — escalate to compensation team for an off-cycle review this week');
-    else if(inc<5000) actions.push('Initiate a compensation benchmarking review — salary may be below peer retention levels');
-    if(sat<=1)        actions.push('Job satisfaction is at the lowest level (1/4) — conduct a confidential stay interview immediately');
-    else if(sat===2)  actions.push('Low job satisfaction detected — explore role redesign, project rotation, or team change');
-    if(yr<2)          actions.push('Employee is in a high-churn early tenure window — assign a senior buddy and create a 6-month engagement milestone plan');
-    if(ms===1&&age<32)actions.push('Young single employees are most mobile — discuss personalised career growth roadmap and skill development funding');
-    if(ht===0)        actions.push('No strong tenure-satisfaction anchor — consider fast-tracking a promotion discussion or stretch assignment');
-    actions.push('Prepare a structured retention offer: title progression, hybrid flexibility, L&D budget, or equity/bonus commitment');
+    // ── VERY HIGH (≥70%) ─────────────────────────────────────────
+    actions.push('🔴 URGENT: Book a private, confidential 1-on-1 within 48 hours — not email, not a group meeting');
+
+    if(ot===1 && inc<3500)
+      actions.push('Double pressure: overtime AND critically low pay — address both simultaneously or this employee will not stay past 30 days');
+    else if(ot===1)
+      actions.push('Overtime is the #1 attrition driver here — immediately cap hours, redistribute workload, or bring in contract support this sprint');
+    else if(inc<3500)
+      actions.push('Salary at ₹'+inc.toLocaleString()+' is critically below market — escalate to compensation team for an emergency off-cycle review today');
+
+    if(inc>=3500 && inc<5000 && ot===0)
+      actions.push('Income is below peer retention levels — flag for next compensation cycle with urgency note; consider spot bonus to bridge the gap');
+
+    if(sat===1)
+      actions.push('Job satisfaction at floor level (1/4) — this is a resignation-imminent signal. Conduct a stay interview this week, not a survey');
+    else if(sat===2)
+      actions.push('Low satisfaction (2/4) — identify the specific dissatisfier: manager, role, team, or workload. Do not guess; ask directly');
+
+    if(yr<2)
+      actions.push('Less than 2 years tenure — early leavers rarely recover. Assign a senior buddy today and create a visible 90-day milestone plan');
+    else if(yr>=2 && yr<4)
+      actions.push('3–4 year tenure is a known flight risk window — confirm promotion or role evolution is on the roadmap within 6 months');
+
+    if(ms===1 && age<30)
+      actions.push('Young, single, and high-risk: this profile has the highest market mobility. A personalised career roadmap discussion is non-negotiable');
+    else if(ms===1 && age>=30)
+      actions.push('Single employees at this risk level are actively comparing market options — a concrete growth offer will outperform a pay raise alone');
+
+    if(age<25)
+      actions.push('Employees under 25 leave for growth, not just money — offer a stretch project, mentorship pairing, or visible role upgrade immediately');
+
+    if(ht===0 && yr>=3)
+      actions.push('No tenure-satisfaction anchor despite '+yr+' years — something eroded their engagement. Find the inflection point in this week\'s 1-on-1');
+
+    actions.push('Prepare a structured retention package before the meeting: title change, hybrid policy, L&D budget, or 6-month bonus commitment');
 
   } else if(p>=0.50){
-    /* ── HIGH ── */
-    actions.push('🟠 HIGH RISK: Prioritise this employee for manager attention within this fortnight');
-    if(ot===1)        actions.push('Overtime pattern is contributing to risk — discuss sustainable workload boundaries and agree on a cap');
-    if(inc<4500)      actions.push('Flag for next compensation cycle — below-average income is a measurable flight risk factor');
-    if(sat<=2)        actions.push('Schedule an engagement conversation — understand specific dissatisfiers before they become resignation triggers');
-    if(yr<3)          actions.push('Still in the critical early-tenure phase — confirm the employee\'s career trajectory and growth expectations are being met');
-    if(ms===1)        actions.push('Single employees prioritise career advancement — ensure visibility of promotion or lateral growth opportunities');
-    if(age<30)        actions.push('Younger employees respond strongly to skill-building investments — offer a relevant certification or conference budget');
-    if(ht===1)        actions.push('Positive signal: high tenure + satisfaction. Reinforce what is working and use this employee as a team anchor');
-    actions.push('Document key person risk — ensure knowledge transfer plan exists for business continuity');
+    // ── HIGH (50–69%) ─────────────────────────────────────────────
+    actions.push('🟠 HIGH RISK: Manager must engage personally within this fortnight — do not delegate to HR alone');
+
+    if(ot===1 && sat<=2)
+      actions.push('Overtime + low satisfaction is a compounding combination — tackle workload relief first; satisfaction rarely recovers under sustained pressure');
+    else if(ot===1)
+      actions.push('Overtime is elevating risk — agree on a realistic weekly hours ceiling and check in after 2 weeks to confirm compliance');
+    else if(sat<=2)
+      actions.push('Satisfaction at '+sat+'/4 without overtime suggests the issue is role or culture, not workload — explore internal transfer options');
+
+    if(inc<4000)
+      actions.push('Pay at ₹'+inc.toLocaleString()+' is a flight risk — request early placement in the next compensation review cycle');
+    else if(inc>=4000 && inc<5500)
+      actions.push('Income is competitive but not strong — ensure the employee knows what the path to the next salary band looks like');
+
+    if(yr<3)
+      actions.push('Early tenure ('+yr+' yrs) with high risk — verify their onboarding expectations were met and their manager relationship is healthy');
+    else if(yr>=3 && yr<6)
+      actions.push(yr+'-year mark is a common decision point — ensure a promotion or role evolution conversation has happened in the last 6 months');
+    else if(yr>=6)
+      actions.push('Long tenure with rising risk often signals stagnation — discuss a lateral move, new domain, or leadership track this quarter');
+
+    if(ms===1)
+      actions.push('Single employees prioritise advancement over stability — make the growth trajectory explicit and time-bound');
+
+    if(age<30 && sat>=3)
+      actions.push('Young employee with decent satisfaction but rising risk — likely being approached externally; ask directly and counter with opportunity');
+    else if(age>=40 && sat<=2)
+      actions.push('Experienced employee with low satisfaction — this profile often leaves quietly; a senior leader conversation carries more weight than HR');
+
+    if(ht===1)
+      actions.push('High tenure + satisfaction is a stabilising signal — reinforce what is working and ensure nothing is about to change for the worse');
+
+    actions.push('Document this as a key-person risk — prepare a basic knowledge transfer plan as a contingency measure');
 
   } else if(p>=THRESHOLD){
-    /* ── MEDIUM ── */
-    actions.push('🟡 WATCH: Include in next monthly manager check-in with a structured agenda');
-    if(ot===1)        actions.push('Monitor overtime frequency — sustained overwork without recognition is a slow-burn attrition driver');
-    if(sat===2)       actions.push('Satisfaction is below average — proactively ask about project preferences and team dynamics');
-    else if(sat===3)  actions.push('Satisfaction is moderate — identify what would move this employee from \'content\' to \'committed\'');
-    if(inc<5000)      actions.push('Review compensation at the next cycle — staying competitive reduces medium-risk escalation');
-    if(yr<3)          actions.push('Confirm onboarding goals have been met and that the employee has a clear development plan for year 2–3');
-    if(ms===1&&age<35)actions.push('Discuss medium-term career goals — ensure the role offers the growth trajectory single employees typically seek');
-    if(ht===1)        actions.push('High-tenure satisfaction is a stabilising factor — acknowledge this employee\'s institutional contribution publicly');
-    actions.push('Ensure recent work is recognised — a lack of visible appreciation is the most common untracked medium-risk driver');
+    // ── MEDIUM (35–49%) ───────────────────────────────────────────
+    actions.push('🟡 WATCH: Schedule a structured monthly check-in — not a status update, a genuine career conversation');
+
+    if(ot===1 && yr<4)
+      actions.push('Overtime in early career is a slow burn — acknowledge the extra effort explicitly; unrecognised overwork is a top medium-risk escalator');
+    else if(ot===1 && yr>=4)
+      actions.push('Sustained overtime for a '+yr+'-year employee suggests structural understaffing — address at team level, not just individually');
+    else if(ot===0 && sat<=2)
+      actions.push('Low satisfaction without overtime suggests the issue is engagement, not workload — explore what would make the role more meaningful');
+
+    if(sat===2)
+      actions.push('Satisfaction at 2/4 is a leading indicator — ask about specific project preferences and team dynamics before it becomes a firm decision to leave');
+    else if(sat===3)
+      actions.push('Satisfaction is neutral (3/4) — identify what would shift this employee from \'content\' to \'committed\'; small targeted changes have high impact here');
+    else if(sat===4 && p>=THRESHOLD)
+      actions.push('High satisfaction but still medium risk — the pull is likely external (market offer, career ceiling). Ask directly about their 2-year plan');
+
+    if(inc<4500 && ot===0)
+      actions.push('Below-average income without overtime pressure — ensure compensation is reviewed at the next cycle before dissatisfaction compounds');
+    else if(inc<4500 && ot===1)
+      actions.push('Overtime with below-average pay is a clear value mismatch — prioritise pay review and discuss comp-for-hours explicitly');
+    else if(inc>=4500 && inc<6000)
+      actions.push('Income is adequate but not retentive at this risk level — visibility of the next salary milestone will help more than the salary itself');
+
+    if(yr<3)
+      actions.push('Year '+yr+' is still formative — confirm the employee\'s original career expectations are being met; course-correct now if not');
+    else if(yr>=3 && yr<5)
+      actions.push('Approaching the 3–5 year inflection point — proactively open the promotion or growth conversation before they open it with a resignation');
+
+    if(ms===1 && age<35)
+      actions.push('Single employee in their early-to-mid career: growth and title matter more than perks — make the next step concrete and achievable');
+
+    if(age>=35 && sat<=3 && ot===0)
+      actions.push('Mid-career with moderate satisfaction — explore whether the role still offers the challenge level this employee needs; stagnation is silent');
+
+    if(ht===1)
+      actions.push('Tenure-satisfaction combination is protective — publicly acknowledge their institutional value; recognition costs nothing and reduces this risk band significantly');
+
+    actions.push('Ensure the last 60 days of work have been visibly recognised — unacknowledged contributions are the most common untracked driver of medium-risk escalation');
 
   } else {
-    /* ── LOW ── */
-    actions.push('🟢 STABLE: No immediate intervention needed — maintain standard engagement cadence');
-    if(ht===1)        actions.push('High tenure + satisfaction: consider as a mentor or culture ambassador — these employees significantly reduce team attrition by 12–18%');
-    if(sat===4)       actions.push('Highest satisfaction tier — solicit this employee\'s input in team culture initiatives and hiring decisions');
-    else if(sat===3)  actions.push('Good satisfaction level — periodic check-ins every quarter are sufficient to keep this profile stable');
-    if(yr>=5)         actions.push('Long-tenured and stable — document their institutional knowledge and involve them in onboarding newer team members');
-    if(ot===0&&inc>=5000) actions.push('Healthy work-life balance and competitive income — maintain these conditions as a baseline retention guarantee');
-    actions.push('Flag for recognition in next performance cycle — proactive appreciation prevents passive disengagement');
+    // ── LOW (<35%) ────────────────────────────────────────────────
+    actions.push('🟢 STABLE: No immediate action needed — maintain standard quarterly engagement rhythm');
+
+    if(ht===1 && sat===4)
+      actions.push('Exemplary profile: high tenure + top satisfaction — nominate as a culture anchor or onboarding mentor to deepen their organisational investment');
+    else if(ht===1 && sat===3)
+      actions.push('Solid tenure with good satisfaction — a low-cost way to keep this profile stable is a public recognition moment or a new responsibility');
+    else if(ht===1)
+      actions.push('Long tenure is a stabilising force — ensure nothing structurally changes for this employee (manager, team, role scope) without prior discussion');
+
+    if(sat===4 && ot===0)
+      actions.push('Highest satisfaction + no overtime: this is your benchmark employee — understand what makes this role work and replicate it for others');
+    else if(sat===4 && ot===1)
+      actions.push('Top satisfaction despite overtime is unusual — monitor hours carefully; sustained overload erodes even the most engaged employees over time');
+    else if(sat===3 && ot===0)
+      actions.push('Steady and stable — a quarterly career conversation is sufficient; ask what would make the role a 4/4, then act on it');
+
+    if(inc>=6000 && yr>=5)
+      actions.push('Well-compensated and established — retain by offering visibility: cross-functional projects, leadership panels, or external conference representation');
+    else if(inc>=4500 && inc<6000 && yr>=3)
+      actions.push('Good standing overall — ensure the next salary step is on the roadmap so compensation doesn\'t become a surprise issue at the 2-year mark');
+
+    if(yr>=10)
+      actions.push(yr+'-year veteran: protect this knowledge base — involve them in documentation, mentoring, and institutional memory initiatives');
+    else if(yr>=5)
+      actions.push('Established '+yr+'-year employee — involve in team decisions and onboarding to deepen their sense of ownership and belonging');
+
+    if(age>=40 && sat>=3 && ot===0)
+      actions.push('Experienced, satisfied, and balanced — this profile rarely leaves; maintain the conditions and ensure manager continuity');
+
+    if(ms===0 && inc>=5000 && sat>=3)
+      actions.push('Stable personal and professional profile — a light-touch annual career review is all that is needed to keep this employee on track');
+
+    if(ot===0 && inc>=5000)
+      actions.push('Healthy work-life balance and competitive income — these two conditions are your strongest retention levers; protect both proactively');
+
+    actions.push('Flag for positive recognition in the next performance cycle — appreciated employees at this risk level have near-zero voluntary attrition');
   }
 
   return{
@@ -228,13 +333,12 @@ function showResult(result){
   rMode.textContent=mode.includes('sagemaker')?'✅ SageMaker Live':'⚡ Local Approx';
   rMode.style.color=mode.includes('sagemaker')?'var(--green)':'var(--amber,#F57C00)';
 
-  /* ── Top Risk Factors — reset then re-render ── */
+  // -- Top Risk Factors --
   const factors=result.top_risk_factors||[];
   const fw=document.getElementById('rFactorsWrap');
   const fc=document.getElementById('rFactors');
-  if(fw) fw.style.display='none';          // always hide first
-  if(fc) fc.innerHTML='';                  // always clear stale items
   if(factors.length>0&&fw&&fc){
+    fc.innerHTML='';
     factors.forEach(f=>{
       const ic=f.impact==='Very High'?'var(--red)':f.impact==='High'?'#ff8c42':f.impact==='Protective'?'var(--green,#2E7D32)':'var(--amber,#F57C00)';
       const d=document.createElement('div');
@@ -243,26 +347,22 @@ function showResult(result){
       fc.appendChild(d);
     });
     fw.style.display='block';
-  }
+  } else if(fw){fw.style.display='none';}
 
-  /* ── Action Recommendations — reset then re-render ── */
+  // -- Action Recommendations --
   const actions=result.action_recommendations||[];
   const aw=document.getElementById('rActionsWrap');
   const ac=document.getElementById('rActions');
-  if(aw) aw.style.display='none';          // always hide first
-  if(ac) ac.innerHTML='';                  // always clear stale items
   if(actions.length>0&&aw&&ac){
-    actions.forEach((a,i)=>{
+    ac.innerHTML='';
+    actions.forEach(a=>{
       const d=document.createElement('div');
-      /* First item = risk-level headline — bold it */
-      d.style.cssText='font-size:.78rem;padding:.5rem .75rem;background:var(--surface2,#F7FAFD);'+
-        'border-radius:6px;border-left:3px solid var(--blue,#1565C0);line-height:1.5;color:var(--txt);'+
-        (i===0?'font-weight:600;':'');
+      d.style.cssText='font-size:.78rem;padding:.5rem .75rem;background:var(--surface2,#F7FAFD);border-radius:6px;border-left:3px solid var(--blue,#1565C0);line-height:1.5;color:var(--txt)';
       d.textContent=a;
       ac.appendChild(d);
     });
     aw.style.display='block';
-  }
+  } else if(aw){aw.style.display='none';}
 }
 /* ── Predict ── */
 async function runPredict(){
