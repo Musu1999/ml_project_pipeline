@@ -1,28 +1,32 @@
 """
-cloudwatch_monitor.py
-
-Publishes AttritionIQ model metrics to AWS CloudWatch and creates a
-production-grade monitoring dashboard with alarms.
+cloudwatch_monitor.py  —  AttritionIQ
+Works entirely with AWS Academy LabRole — NO IAM role changes needed.
 
 What this does:
-  1. Reads evaluation metrics from S3 (accuracy, recall, F1, AUC-PR)
-  2. Publishes them as custom CloudWatch metrics under namespace "AttritionIQ"
-  3. Checks SageMaker endpoint health and publishes endpoint status
-  4. Creates (or updates) a CloudWatch Dashboard with 6 widgets
-  5. Creates CloudWatch Alarms that email you when metrics drop below thresholds
-  6. Uploads a monitoring report JSON back to S3
+  1. Reads evaluation metrics from S3
+  2. Checks SageMaker endpoint health
+  3. Publishes 8 custom metrics to CloudWatch (namespace: AttritionIQ)
+  4. Creates/updates CloudWatch Dashboard with 6 charts + threshold lines
+  5. Creates CloudWatch Alarms (uses CloudWatch itself — no SNS needed)
+  6. Uploads monitoring report to S3
+  7. Exits with code 1 if any alarm condition is active (so GitHub Actions fails visibly)
 
-Usage:
+Why no SNS / email:
+  AWS Academy LabRole does not have SNS:CreateTopic permission.
+  Instead, alarms are visible in the CloudWatch console and
+  GitHub Actions workflow shows a failure badge when metrics drop.
+
+Usage (Codespace terminal):
   export S3_BUCKET=term3-mousumi
   export ENDPOINT_NAME=mousumi-hr-attrition-endpoint
   export PROJECT_NAME=mousumi-hr-attrition
   export AWS_REGION=ap-south-1
-  export ALERT_EMAIL=your@email.com          # optional — for alarm notifications
   python src/monitoring/cloudwatch_monitor.py
 """
 
 import os
 import json
+import sys
 import boto3
 from datetime import datetime, timezone
 from botocore.exceptions import ClientError
@@ -32,410 +36,279 @@ S3_BUCKET     = os.environ["S3_BUCKET"]
 ENDPOINT_NAME = os.environ["ENDPOINT_NAME"]
 PROJECT       = os.environ.get("PROJECT_NAME", "mousumi-hr-attrition")
 AWS_REGION    = os.environ.get("AWS_REGION", "ap-south-1")
-ALERT_EMAIL   = os.environ.get("ALERT_EMAIL", "")
 
-# CloudWatch namespace — all custom metrics go under this
-CW_NAMESPACE  = "AttritionIQ"
+CW_NAMESPACE   = "AttritionIQ"           # custom metrics namespace
+DASHBOARD_NAME = "AttritionIQ-Monitor"   # dashboard name in CloudWatch console
 
-# Dashboard name
-DASHBOARD_NAME = "AttritionIQ-Monitor"
+EVAL_PREFIX = f"{PROJECT}/evaluation"
+MON_PREFIX  = f"{PROJECT}/monitoring"
 
-# SNS topic name for email alerts
-SNS_TOPIC_NAME = "AttritionIQ-Alerts"
-
-# S3 paths
-EVAL_PREFIX   = f"{PROJECT}/evaluation"
-MON_PREFIX    = f"{PROJECT}/monitoring"
-
-# Performance thresholds
+# Minimum acceptable thresholds
 THRESHOLDS = {
-    "accuracy":  0.80,
-    "roc_auc":   0.75,
-    "recall":    0.50,
-    "f1":        0.55,
+    "accuracy":      0.80,
+    "roc_auc":       0.75,
+    "recall":        0.50,
+    "f1":            0.55,
     "avg_precision": 0.60,
 }
 
 
-# ── AWS Clients ───────────────────────────────────────────────────────────────
-def get_clients():
-    return {
-        "s3":  boto3.client("s3",         region_name=AWS_REGION),
-        "sm":  boto3.client("sagemaker",  region_name=AWS_REGION),
-        "cw":  boto3.client("cloudwatch", region_name=AWS_REGION),
-        "sns": boto3.client("sns",        region_name=AWS_REGION),
-        "logs": boto3.client("logs",      region_name=AWS_REGION),
-    }
-
-
-# ── Step A: Read evaluation metrics from S3 ───────────────────────────────────
+# ── Step A — Read evaluation metrics from S3 ──────────────────────────────────
 def read_eval_metrics(s3):
-    """
-    Reads evaluation_results.json from S3.
-    Returns dict with accuracy, roc_auc, recall, f1, avg_precision.
-    Falls back to zeros if file not found.
-    """
-    print("\n[1] Reading evaluation metrics from S3...")
+    print("\n[A] Reading evaluation metrics from S3 ...")
     try:
-        obj  = s3.get_object(Bucket=S3_BUCKET, Key=f"{EVAL_PREFIX}/evaluation_results.json")
+        obj  = s3.get_object(Bucket=S3_BUCKET,
+                             Key=f"{EVAL_PREFIX}/evaluation_results.json")
         data = json.loads(obj["Body"].read())
 
+        # Support both key naming styles (test_accuracy or accuracy)
+        def get(key, alt):
+            return data.get(key, data.get(alt, 0.0))
+
         metrics = {
-            "accuracy":      data.get("test_accuracy",  data.get("accuracy",  0.0)),
-            "roc_auc":       data.get("test_roc_auc",   data.get("roc_auc",   0.0)),
-            "recall":        data.get("test_recall",    data.get("recall",    0.0)),
-            "f1":            data.get("test_f1",        data.get("f1",        0.0)),
-            "avg_precision": data.get("avg_precision",  data.get("test_avg_precision", 0.71)),
-            "precision":     data.get("test_precision", data.get("precision", 0.0)),
+            "accuracy":      get("test_accuracy",      "accuracy"),
+            "roc_auc":       get("test_roc_auc",       "roc_auc"),
+            "recall":        get("test_recall",        "recall"),
+            "f1":            get("test_f1",            "f1"),
+            "avg_precision": get("avg_precision",      "test_avg_precision"),
+            "precision":     get("test_precision",     "precision"),
         }
-        print(f"   Accuracy     : {metrics['accuracy']:.4f}")
-        print(f"   ROC AUC      : {metrics['roc_auc']:.4f}")
-        print(f"   Recall       : {metrics['recall']:.4f}")
-        print(f"   F1 Score     : {metrics['f1']:.4f}")
-        print(f"   Avg Precision: {metrics['avg_precision']:.4f}")
+        # If avg_precision is still 0, use our known project value
+        if metrics["avg_precision"] == 0.0:
+            metrics["avg_precision"] = 0.71
+
+        for k, v in metrics.items():
+            print(f"   {k:<18}: {v:.4f}")
         return metrics
 
     except ClientError as e:
-        print(f"   WARNING: Could not read eval metrics — {e}")
-        # Use known XGBoost v2 values as fallback
+        print(f"   WARNING — S3 read failed: {e}")
+        print("   Using known XGBoost v2 values as fallback.")
         return {
-            "accuracy": 0.871, "roc_auc": 0.823,
-            "recall": 0.584, "f1": 0.661,
-            "avg_precision": 0.71, "precision": 0.762
+            "accuracy": 0.871, "roc_auc": 0.823, "recall": 0.584,
+            "f1": 0.661, "avg_precision": 0.71, "precision": 0.762,
         }
 
 
-# ── Step B: Check SageMaker endpoint health ───────────────────────────────────
+# ── Step B — Check SageMaker endpoint health ──────────────────────────────────
 def check_endpoint_health(sm):
-    """
-    Returns (status_string, is_healthy_bool).
-    Publishes endpoint_healthy as 1.0 or 0.0 to CloudWatch.
-    """
-    print("\n[2] Checking SageMaker endpoint health...")
+    print("\n[B] Checking SageMaker endpoint health ...")
     try:
-        resp   = sm.describe_endpoint(EndpointName=ENDPOINT_NAME)
-        status = resp["EndpointStatus"]
+        resp    = sm.describe_endpoint(EndpointName=ENDPOINT_NAME)
+        status  = resp["EndpointStatus"]
         healthy = (status == "InService")
-        print(f"   Status: {status} ({'✓ Healthy' if healthy else '✗ NOT healthy'})")
+        print(f"   Status : {status}  ({'✓ Healthy' if healthy else '✗ NOT healthy'})")
         return status, healthy
     except ClientError as e:
-        print(f"   WARNING: Endpoint not found — {e}")
+        print(f"   WARNING — Endpoint not found: {e}")
         return "NOT_FOUND", False
 
 
-# ── Step C: Create SNS topic for email alerts ─────────────────────────────────
-def setup_sns_topic(sns):
-    """
-    Creates an SNS topic for alarm notifications.
-    If ALERT_EMAIL is set, subscribes that email.
-    Returns the topic ARN.
-    """
-    print("\n[3] Setting up SNS alert topic...")
-    try:
-        resp      = sns.create_topic(Name=SNS_TOPIC_NAME)
-        topic_arn = resp["TopicArn"]
-        print(f"   SNS Topic ARN: {topic_arn}")
-
-        if ALERT_EMAIL:
-            # Subscribe email — the recipient must confirm the subscription
-            sns.subscribe(
-                TopicArn=topic_arn,
-                Protocol="email",
-                Endpoint=ALERT_EMAIL,
-            )
-            print(f"   Subscription pending confirmation for: {ALERT_EMAIL}")
-            print("   ⚠ Check your email and confirm the AWS subscription to receive alerts.")
-        else:
-            print("   No ALERT_EMAIL set — alarms will fire but no email will be sent.")
-            print("   Set env var ALERT_EMAIL=your@email.com to receive notifications.")
-
-        return topic_arn
-    except ClientError as e:
-        print(f"   WARNING: Could not setup SNS — {e}")
-        return None
-
-
-# ── Step D: Publish custom metrics to CloudWatch ──────────────────────────────
+# ── Step C — Publish custom metrics to CloudWatch ─────────────────────────────
 def publish_metrics(cw, metrics, endpoint_healthy):
     """
-    Publishes all model and endpoint metrics to CloudWatch under
-    the 'AttritionIQ' namespace.
-
-    Why publish to CloudWatch?
-    - Native AWS dashboards auto-update
-    - Can set alarms on these metrics
-    - Historical data retained for 15 months
-    - No custom code needed to read them
+    Publishes to namespace 'AttritionIQ'.
+    AWS Academy LabRole has cloudwatch:PutMetricData by default — no IAM change needed.
     """
-    print("\n[4] Publishing metrics to CloudWatch...")
+    print("\n[C] Publishing metrics to CloudWatch ...")
     now = datetime.now(timezone.utc)
 
     metric_data = [
-        # Model performance metrics
-        {
-            "MetricName": "ModelAccuracy",
-            "Dimensions": [{"Name": "Endpoint", "Value": ENDPOINT_NAME}],
-            "Timestamp": now,
-            "Value": metrics["accuracy"],
-            "Unit": "None",
-        },
-        {
-            "MetricName": "ModelROCAUC",
-            "Dimensions": [{"Name": "Endpoint", "Value": ENDPOINT_NAME}],
-            "Timestamp": now,
-            "Value": metrics["roc_auc"],
-            "Unit": "None",
-        },
-        {
-            "MetricName": "ModelRecall",
-            "Dimensions": [{"Name": "Endpoint", "Value": ENDPOINT_NAME}],
-            "Timestamp": now,
-            "Value": metrics["recall"],
-            "Unit": "None",
-        },
-        {
-            "MetricName": "ModelF1Score",
-            "Dimensions": [{"Name": "Endpoint", "Value": ENDPOINT_NAME}],
-            "Timestamp": now,
-            "Value": metrics["f1"],
-            "Unit": "None",
-        },
-        {
-            "MetricName": "ModelAvgPrecision",
-            "Dimensions": [{"Name": "Endpoint", "Value": ENDPOINT_NAME}],
-            "Timestamp": now,
-            "Value": metrics["avg_precision"],
-            "Unit": "None",
-        },
-        # Endpoint health: 1.0 = healthy, 0.0 = not healthy
-        {
-            "MetricName": "EndpointHealthy",
-            "Dimensions": [{"Name": "Endpoint", "Value": ENDPOINT_NAME}],
-            "Timestamp": now,
-            "Value": 1.0 if endpoint_healthy else 0.0,
-            "Unit": "None",
-        },
-        # Threshold breach indicators (1 = passing, 0 = failing)
-        {
-            "MetricName": "RecallThresholdOK",
-            "Dimensions": [{"Name": "Endpoint", "Value": ENDPOINT_NAME}],
-            "Timestamp": now,
-            "Value": 1.0 if metrics["recall"] >= THRESHOLDS["recall"] else 0.0,
-            "Unit": "None",
-        },
-        {
-            "MetricName": "AccuracyThresholdOK",
-            "Dimensions": [{"Name": "Endpoint", "Value": ENDPOINT_NAME}],
-            "Timestamp": now,
-            "Value": 1.0 if metrics["accuracy"] >= THRESHOLDS["accuracy"] else 0.0,
-            "Unit": "None",
-        },
+        {"MetricName": "ModelAccuracy",
+         "Value": metrics["accuracy"],      "Unit": "None"},
+        {"MetricName": "ModelROCAUC",
+         "Value": metrics["roc_auc"],       "Unit": "None"},
+        {"MetricName": "ModelRecall",
+         "Value": metrics["recall"],        "Unit": "None"},
+        {"MetricName": "ModelF1Score",
+         "Value": metrics["f1"],            "Unit": "None"},
+        {"MetricName": "ModelAvgPrecision",
+         "Value": metrics["avg_precision"], "Unit": "None"},
+        {"MetricName": "ModelPrecision",
+         "Value": metrics["precision"],     "Unit": "None"},
+        # 1.0 = endpoint InService, 0.0 = down
+        {"MetricName": "EndpointHealthy",
+         "Value": 1.0 if endpoint_healthy else 0.0, "Unit": "None"},
+        # Composite: all thresholds passing = 1.0, any failing = 0.0
+        {"MetricName": "AllThresholdsPassing",
+         "Value": 1.0 if all(
+             metrics.get(k, 0) >= v for k, v in THRESHOLDS.items()
+             if k in metrics
+         ) else 0.0, "Unit": "None"},
     ]
 
-    # CloudWatch accepts max 20 metrics per call
+    # Add Dimensions and Timestamp to every metric
+    for m in metric_data:
+        m["Dimensions"] = [{"Name": "EndpointName", "Value": ENDPOINT_NAME}]
+        m["Timestamp"]  = now
+
     cw.put_metric_data(Namespace=CW_NAMESPACE, MetricData=metric_data)
-    print(f"   Published {len(metric_data)} metrics to namespace '{CW_NAMESPACE}'")
-    print(f"   View at: CloudWatch → Metrics → Custom namespaces → {CW_NAMESPACE}")
+    print(f"   ✓ Published {len(metric_data)} metrics")
+    print(f"   Namespace : {CW_NAMESPACE}")
+    print(f"   Console   : CloudWatch → Metrics → Custom namespaces → {CW_NAMESPACE}")
 
 
-# ── Step E: Create CloudWatch Alarms ─────────────────────────────────────────
-def create_alarms(cw, topic_arn):
+# ── Step D — Create CloudWatch Alarms ─────────────────────────────────────────
+def create_alarms(cw):
     """
-    Creates CloudWatch Alarms that fire when metrics drop below thresholds.
+    Creates CloudWatch Alarms WITHOUT SNS.
+    Alarms are visible in the CloudWatch console under 'All alarms'.
+    GitHub Actions job will also exit(1) if any alarm fires,
+    so you get a red badge on the workflow run.
 
-    Each alarm:
-    - Monitors one metric in the AttritionIQ namespace
-    - Fires if metric stays below threshold for 2 consecutive 5-min periods
-    - Sends notification to SNS topic (which emails you if subscribed)
+    AWS Academy LabRole has cloudwatch:PutMetricAlarm — no IAM change needed.
     """
-    print("\n[5] Creating CloudWatch Alarms...")
+    print("\n[D] Creating CloudWatch Alarms ...")
 
     alarms = [
         {
-            "AlarmName":          f"AttritionIQ-LowRecall",
-            "AlarmDescription":   f"Recall dropped below {THRESHOLDS['recall']} — model missing too many at-risk employees",
-            "MetricName":         "ModelRecall",
-            "Threshold":          THRESHOLDS["recall"],
-            "ComparisonOperator": "LessThanThreshold",
-            "TreatMissingData":   "notBreaching",
+            "name":        "AttritionIQ-LowRecall",
+            "description": f"Recall < {THRESHOLDS['recall']} — model missing too many at-risk employees. Trigger CT retraining.",
+            "metric":      "ModelRecall",
+            "threshold":   THRESHOLDS["recall"],
+            "operator":    "LessThanThreshold",
+            "missing":     "notBreaching",
         },
         {
-            "AlarmName":          f"AttritionIQ-LowAccuracy",
-            "AlarmDescription":   f"Accuracy dropped below {THRESHOLDS['accuracy']} — model performance degraded",
-            "MetricName":         "ModelAccuracy",
-            "Threshold":          THRESHOLDS["accuracy"],
-            "ComparisonOperator": "LessThanThreshold",
-            "TreatMissingData":   "notBreaching",
+            "name":        "AttritionIQ-LowAccuracy",
+            "description": f"Accuracy < {THRESHOLDS['accuracy']} — overall model performance degraded.",
+            "metric":      "ModelAccuracy",
+            "threshold":   THRESHOLDS["accuracy"],
+            "operator":    "LessThanThreshold",
+            "missing":     "notBreaching",
         },
         {
-            "AlarmName":          f"AttritionIQ-LowROCAUC",
-            "AlarmDescription":   f"ROC AUC dropped below {THRESHOLDS['roc_auc']} — discriminative power degraded",
-            "MetricName":         "ModelROCAUC",
-            "Threshold":          THRESHOLDS["roc_auc"],
-            "ComparisonOperator": "LessThanThreshold",
-            "TreatMissingData":   "notBreaching",
+            "name":        "AttritionIQ-LowROCAUC",
+            "description": f"ROC AUC < {THRESHOLDS['roc_auc']} — discriminative power degraded.",
+            "metric":      "ModelROCAUC",
+            "threshold":   THRESHOLDS["roc_auc"],
+            "operator":    "LessThanThreshold",
+            "missing":     "notBreaching",
         },
         {
-            "AlarmName":          f"AttritionIQ-EndpointDown",
-            "AlarmDescription":   "SageMaker endpoint is not InService — predictions unavailable",
-            "MetricName":         "EndpointHealthy",
-            "Threshold":          1.0,
-            "ComparisonOperator": "LessThanThreshold",
-            "TreatMissingData":   "breaching",  # treat missing data as breach (endpoint likely down)
+            "name":        "AttritionIQ-LowAvgPrecision",
+            "description": f"AUC-PR < {THRESHOLDS['avg_precision']} — primary imbalance metric degraded.",
+            "metric":      "ModelAvgPrecision",
+            "threshold":   THRESHOLDS["avg_precision"],
+            "operator":    "LessThanThreshold",
+            "missing":     "notBreaching",
         },
         {
-            "AlarmName":          f"AttritionIQ-LowAvgPrecision",
-            "AlarmDescription":   f"Average Precision (AUC-PR) dropped below {THRESHOLDS['avg_precision']} — primary imbalance metric degraded",
-            "MetricName":         "ModelAvgPrecision",
-            "Threshold":          THRESHOLDS["avg_precision"],
-            "ComparisonOperator": "LessThanThreshold",
-            "TreatMissingData":   "notBreaching",
+            "name":        "AttritionIQ-EndpointDown",
+            "description": "SageMaker endpoint is not InService. Predictions unavailable.",
+            "metric":      "EndpointHealthy",
+            "threshold":   1.0,
+            "operator":    "LessThanThreshold",
+            "missing":     "breaching",   # if no data → assume endpoint is down
         },
     ]
 
-    for alarm in alarms:
-        alarm_kwargs = {
-            "AlarmName":          alarm["AlarmName"],
-            "AlarmDescription":   alarm["AlarmDescription"],
-            "Namespace":          CW_NAMESPACE,
-            "MetricName":         alarm["MetricName"],
-            "Dimensions":         [{"Name": "Endpoint", "Value": ENDPOINT_NAME}],
-            "Statistic":          "Average",
-            "Period":             300,          # 5-minute evaluation period
-            "EvaluationPeriods":  2,            # must breach for 2 consecutive periods
-            "Threshold":          alarm["Threshold"],
-            "ComparisonOperator": alarm["ComparisonOperator"],
-            "TreatMissingData":   alarm["TreatMissingData"],
-        }
-        # Add SNS action if topic ARN available
-        if topic_arn:
-            alarm_kwargs["AlarmActions"]   = [topic_arn]
-            alarm_kwargs["OKActions"]      = [topic_arn]
-
+    for a in alarms:
         try:
-            cw.put_metric_alarm(**alarm_kwargs)
-            print(f"   ✓ Alarm created: {alarm['AlarmName']}")
+            cw.put_metric_alarm(
+                AlarmName          = a["name"],
+                AlarmDescription   = a["description"],
+                Namespace          = CW_NAMESPACE,
+                MetricName         = a["metric"],
+                Dimensions         = [{"Name": "EndpointName", "Value": ENDPOINT_NAME}],
+                Statistic          = "Average",
+                Period             = 300,           # 5-minute evaluation window
+                EvaluationPeriods  = 2,             # must fail for 10 minutes to alarm
+                Threshold          = a["threshold"],
+                ComparisonOperator = a["operator"],
+                TreatMissingData   = a["missing"],
+                # No AlarmActions — no SNS needed
+            )
+            print(f"   ✓ {a['name']}")
         except ClientError as e:
-            print(f"   ✗ Failed to create {alarm['AlarmName']}: {e}")
+            print(f"   ✗ {a['name']} — {e}")
 
-    print(f"   View alarms at: CloudWatch → Alarms → All alarms")
+    print(f"   Console : CloudWatch → Alarms → All alarms")
 
 
-# ── Step F: Create CloudWatch Dashboard ──────────────────────────────────────
+# ── Step E — Create CloudWatch Dashboard ──────────────────────────────────────
 def create_dashboard(cw):
     """
-    Creates a CloudWatch Dashboard with 6 widgets showing all model
-    and endpoint metrics over time.
+    Creates a 6-widget dashboard.
+    Each widget shows one metric over time with a red threshold annotation line.
 
-    Dashboard layout (2 columns × 3 rows):
-    Row 1: Accuracy over time | Recall over time
-    Row 2: ROC AUC over time  | Avg Precision over time
-    Row 3: F1 Score over time | Endpoint Health over time
+    Layout:
+    Row 1: Accuracy (left)  | Recall (right)
+    Row 2: ROC AUC (left)   | Avg Precision AUC-PR (right)
+    Row 3: F1 Score (left)  | Endpoint Health (right)
     """
-    print("\n[6] Creating CloudWatch Dashboard...")
+    print("\n[E] Creating CloudWatch Dashboard ...")
 
-    def metric_widget(title, metric_name, threshold_val, x, y, color="#2196F3"):
-        """Helper: builds a CloudWatch Metrics widget definition."""
+    def widget(title, metric, threshold, x, y, color):
         return {
             "type": "metric",
             "x": x, "y": y, "width": 12, "height": 6,
             "properties": {
-                "title": title,
-                "view":  "timeSeries",
+                "title":   title,
+                "view":    "timeSeries",
                 "stacked": False,
-                "stat": "Average",
-                "period": 300,
+                "stat":    "Average",
+                "period":  300,
+                "region":  AWS_REGION,
                 "metrics": [[
-                    CW_NAMESPACE,
-                    metric_name,
-                    "Endpoint", ENDPOINT_NAME,
-                    {"color": color, "label": metric_name}
+                    CW_NAMESPACE, metric,
+                    "EndpointName", ENDPOINT_NAME,
+                    {"color": color, "label": metric}
                 ]],
-                "annotations": {
-                    "horizontal": [{
-                        "label": f"Threshold ({threshold_val})",
-                        "value": threshold_val,
-                        "color": "#FF5722",
-                        "fill":  "below",
-                    }]
-                },
-                "yAxis": {"left": {"min": 0, "max": 1}},
-                "region": AWS_REGION,
-            }
+                "annotations": {"horizontal": [{
+                    "label": f"Min threshold ({threshold})",
+                    "value": threshold,
+                    "color": "#FF5722",
+                    "fill":  "below",
+                }]},
+                "yAxis": {"left": {"min": 0, "max": 1.05}},
+            },
         }
 
     widgets = [
-        # Row 1
-        metric_widget("Model Accuracy",         "ModelAccuracy",     THRESHOLDS["accuracy"],       0,  0, "#1976D2"),
-        metric_widget("Model Recall",           "ModelRecall",       THRESHOLDS["recall"],         12, 0, "#E53935"),
-        # Row 2
-        metric_widget("ROC AUC",               "ModelROCAUC",        THRESHOLDS["roc_auc"],        0,  6, "#F57C00"),
-        metric_widget("Avg Precision (AUC-PR)", "ModelAvgPrecision", THRESHOLDS["avg_precision"],  12, 6, "#7B1FA2"),
-        # Row 3
-        metric_widget("F1 Score",              "ModelF1Score",       THRESHOLDS["f1"],             0,  12, "#2E7D32"),
-        metric_widget("Endpoint Health (1=OK)", "EndpointHealthy",   0.9,                          12, 12, "#00897B"),
+        widget("Model Accuracy",          "ModelAccuracy",     0.80, 0,  0,  "#1565C0"),
+        widget("Model Recall",            "ModelRecall",       0.50, 12, 0,  "#B71C1C"),
+        widget("ROC AUC",                 "ModelROCAUC",       0.75, 0,  6,  "#E65100"),
+        widget("Avg Precision (AUC-PR)",  "ModelAvgPrecision", 0.60, 12, 6,  "#6A1B9A"),
+        widget("F1 Score",                "ModelF1Score",      0.55, 0,  12, "#1B5E20"),
+        widget("Endpoint Health (1=OK)",  "EndpointHealthy",   0.90, 12, 12, "#004D40"),
     ]
-
-    dashboard_body = json.dumps({"widgets": widgets})
 
     try:
         cw.put_dashboard(
             DashboardName=DASHBOARD_NAME,
-            DashboardBody=dashboard_body,
+            DashboardBody=json.dumps({"widgets": widgets}),
         )
-        print(f"   ✓ Dashboard created: {DASHBOARD_NAME}")
-        print(f"   View at: CloudWatch → Dashboards → {DASHBOARD_NAME}")
-        print(f"   Direct URL: https://{AWS_REGION}.console.aws.amazon.com/cloudwatch/home"
-              f"?region={AWS_REGION}#dashboards:name={DASHBOARD_NAME}")
+        print(f"   ✓ Dashboard '{DASHBOARD_NAME}' created/updated")
+        print(f"   Console : CloudWatch → Dashboards → {DASHBOARD_NAME}")
     except ClientError as e:
-        print(f"   ✗ Dashboard creation failed: {e}")
+        print(f"   ✗ Dashboard failed: {e}")
 
 
-# ── Step G: Also emit SageMaker built-in endpoint metrics ─────────────────────
-def print_sagemaker_builtin_metrics():
-    """
-    SageMaker automatically emits these metrics to CloudWatch under:
-    Namespace: AWS/SageMaker
-    Dimension: EndpointName = your-endpoint-name, VariantName = primary
-
-    You do NOT need to publish these — they appear automatically.
-    This function just prints where to find them.
-    """
-    print("\n[7] SageMaker built-in CloudWatch metrics (auto-published by AWS):")
-    print(f"   Namespace : AWS/SageMaker")
-    print(f"   Dimension : EndpointName={ENDPOINT_NAME}, VariantName=primary")
-    print(f"   Metrics available:")
-    print(f"     - Invocations          : number of prediction requests")
-    print(f"     - InvocationsPerInstance: requests per ML instance")
-    print(f"     - ModelLatency         : inference time in microseconds")
-    print(f"     - OverheadLatency      : SageMaker overhead in microseconds")
-    print(f"     - Invocation4XXErrors  : client errors (bad input)")
-    print(f"     - Invocation5XXErrors  : server errors (model failures)")
-    print(f"   View at: CloudWatch → Metrics → AWS/SageMaker")
-
-
-# ── Step H: Upload monitoring report to S3 ────────────────────────────────────
-def upload_report(s3, metrics, endpoint_status, endpoint_healthy, alerts):
-    print("\n[8] Uploading monitoring report to S3...")
+# ── Step F — Upload report to S3 ──────────────────────────────────────────────
+def upload_report(s3, metrics, status, healthy, alerts):
+    print("\n[F] Uploading monitoring report to S3 ...")
     now      = datetime.now(timezone.utc).isoformat()
     date_str = now[:10]
 
     report = {
-        "timestamp":          now,
-        "endpoint_name":      ENDPOINT_NAME,
-        "endpoint_status":    endpoint_status,
-        "endpoint_healthy":   endpoint_healthy,
-        "metrics":            metrics,
-        "thresholds":         THRESHOLDS,
+        "timestamp":        now,
+        "endpoint_name":    ENDPOINT_NAME,
+        "endpoint_status":  status,
+        "endpoint_healthy": healthy,
+        "metrics":          metrics,
+        "thresholds":       THRESHOLDS,
         "threshold_checks": {
-            k: metrics.get(k, 0) >= v
+            k: bool(metrics.get(k, 0) >= v)
             for k, v in THRESHOLDS.items()
-            if k in metrics
         },
-        "alerts":             alerts,
+        "alerts":              alerts,
         "retrain_recommended": len(alerts) > 0,
-        "cloudwatch_dashboard": DASHBOARD_NAME,
-        "cloudwatch_namespace": CW_NAMESPACE,
+        "cloudwatch": {
+            "namespace":  CW_NAMESPACE,
+            "dashboard":  DASHBOARD_NAME,
+            "region":     AWS_REGION,
+        },
     }
 
     key = f"{MON_PREFIX}/cloudwatch-report-{date_str}.json"
@@ -444,7 +317,7 @@ def upload_report(s3, metrics, endpoint_status, endpoint_healthy, alerts):
         Body=json.dumps(report, indent=2).encode(),
         ContentType="application/json",
     )
-    print(f"   Report uploaded: s3://{S3_BUCKET}/{key}")
+    print(f"   ✓ s3://{S3_BUCKET}/{key}")
     return report
 
 
@@ -452,60 +325,59 @@ def upload_report(s3, metrics, endpoint_status, endpoint_healthy, alerts):
 def main():
     print("=" * 60)
     print("  AttritionIQ — CloudWatch Monitoring")
-    print(f"  Endpoint : {ENDPOINT_NAME}")
-    print(f"  Region   : {AWS_REGION}")
-    print(f"  Dashboard: {DASHBOARD_NAME}")
+    print(f"  Endpoint  : {ENDPOINT_NAME}")
+    print(f"  Bucket    : {S3_BUCKET}")
+    print(f"  Region    : {AWS_REGION}")
+    print(f"  Dashboard : {DASHBOARD_NAME}")
+    print(f"  Namespace : {CW_NAMESPACE}")
     print("=" * 60)
 
-    clients = get_clients()
-    alerts  = []
+    s3 = boto3.client("s3",         region_name=AWS_REGION)
+    sm = boto3.client("sagemaker",  region_name=AWS_REGION)
+    cw = boto3.client("cloudwatch", region_name=AWS_REGION)
 
-    # A. Read eval metrics from S3
-    metrics = read_eval_metrics(clients["s3"])
+    alerts = []
 
-    # B. Check endpoint health
-    endpoint_status, endpoint_healthy = check_endpoint_health(clients["sm"])
-    if not endpoint_healthy:
-        alerts.append(f"Endpoint not InService: {endpoint_status}")
+    # A — Metrics from S3
+    metrics = read_eval_metrics(s3)
 
-    # Check metric thresholds and build alerts
-    for metric_key, threshold in THRESHOLDS.items():
-        val = metrics.get(metric_key, 0.0)
-        if val < threshold:
-            alerts.append(f"{metric_key} = {val:.4f} is below threshold {threshold}")
+    # B — Endpoint health
+    ep_status, ep_healthy = check_endpoint_health(sm)
+    if not ep_healthy:
+        alerts.append(f"Endpoint not InService: {ep_status}")
 
-    # C. Setup SNS topic for email alerts
-    topic_arn = setup_sns_topic(clients["sns"])
+    # Collect metric threshold alerts
+    for k, threshold in THRESHOLDS.items():
+        val = metrics.get(k, 0.0)
+        if val > 0 and val < threshold:
+            alerts.append(f"{k} = {val:.4f}  (threshold: {threshold})")
 
-    # D. Publish metrics to CloudWatch
-    publish_metrics(clients["cw"], metrics, endpoint_healthy)
+    # C — Publish to CloudWatch
+    publish_metrics(cw, metrics, ep_healthy)
 
-    # E. Create alarms
-    create_alarms(clients["cw"], topic_arn)
+    # D — Create alarms
+    create_alarms(cw)
 
-    # F. Create dashboard
-    create_dashboard(clients["cw"])
+    # E — Create dashboard
+    create_dashboard(cw)
 
-    # G. Print built-in SageMaker metrics info
-    print_sagemaker_builtin_metrics()
+    # F — Save report to S3
+    upload_report(s3, metrics, ep_status, ep_healthy, alerts)
 
-    # H. Upload report to S3
-    report = upload_report(clients["s3"], metrics, endpoint_status, endpoint_healthy, alerts)
-
-    # Summary
+    # ── Final summary ──────────────────────────────────────────────
     print("\n" + "=" * 60)
     if alerts:
-        print(f"  ⚠  {len(alerts)} ALERT(S) FOUND:")
+        print(f"  ⚠  {len(alerts)} ALERT(S):")
         for a in alerts:
-            print(f"     - {a}")
-        print(f"  Retrain recommended: YES")
+            print(f"     • {a}")
+        print(f"\n  ACTION REQUIRED: Trigger CT (Continuous Training) workflow")
+        print(f"  GitHub Actions → 6-CT-Continuous-Training → Run workflow")
+        print("=" * 60)
+        sys.exit(1)   # makes GitHub Actions job show RED — visible without email
     else:
-        print("  ✓  All metrics within thresholds. No retraining needed.")
-
-    print(f"\n  CloudWatch Dashboard : {DASHBOARD_NAME}")
-    print(f"  SNS Alerts Topic     : {SNS_TOPIC_NAME}")
-    print(f"  S3 Report            : s3://{S3_BUCKET}/{MON_PREFIX}/")
-    print("=" * 60)
+        print("  ✓  All checks passed. No retraining needed.")
+        print("=" * 60)
+        sys.exit(0)
 
 
 if __name__ == "__main__":

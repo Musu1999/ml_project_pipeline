@@ -1,12 +1,12 @@
 name: 6-Monitor-Pipeline-CloudWatch
 
 on:
-  workflow_dispatch:                    # run manually anytime
+  workflow_dispatch:
   workflow_run:
-    workflows: ["4. Model Deployment"]  # auto-run after deploy
+    workflows: ["4. Model Deployment"]
     types: [completed]
   schedule:
-    - cron: '0 */6 * * *'              # every 6 hours automatically
+    - cron: '0 */6 * * *'   # every 6 hours
 
 jobs:
   cloudwatch-monitor:
@@ -39,18 +39,23 @@ jobs:
           ENDPOINT_NAME: ${{ vars.ENDPOINT_NAME }}
           PROJECT_NAME:  ${{ vars.PROJECT_NAME }}
           AWS_REGION:    ${{ vars.AWS_REGION }}
-          ALERT_EMAIL:   ${{ secrets.ALERT_EMAIL }}
         run: |
           python src/monitoring/cloudwatch_monitor.py
 
-      - name: Write job summary
+      # This step always runs — writes result to the Actions summary page
+      - name: Write summary
         if: always()
         run: |
-          echo "## CloudWatch Monitoring Run ✓" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "## ✅ CloudWatch Monitoring — All Clear" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ⚠️ CloudWatch Monitoring — Alerts Active" >> $GITHUB_STEP_SUMMARY
+            echo "Check CloudWatch console for details." >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Dashboard:** AttritionIQ-Monitor" >> $GITHUB_STEP_SUMMARY
-          echo "**Namespace:** AttritionIQ" >> $GITHUB_STEP_SUMMARY
-          echo "**Endpoint:** ${{ vars.ENDPOINT_NAME }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**View in AWS Console:**" >> $GITHUB_STEP_SUMMARY
-          echo "CloudWatch → Dashboards → AttritionIQ-Monitor" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Dashboard | AttritionIQ-Monitor |" >> $GITHUB_STEP_SUMMARY
+          echo "| Namespace | AttritionIQ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Endpoint | ${{ vars.ENDPOINT_NAME }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Region | ${{ vars.AWS_REGION }} |" >> $GITHUB_STEP_SUMMARY
