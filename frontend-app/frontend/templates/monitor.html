@@ -320,6 +320,32 @@
     </div><!-- /mon-grid -->
 
     <!-- ═══════════════════════════════════════════════════════
+         DRIFT SUMMARY CARDS
+    ═══════════════════════════════════════════════════════ -->
+    <div class="drift-grid" id="driftGrid" style="margin-bottom:2rem;">
+      <div class="drift-card">
+        <div class="dc-name">OverTime Rate</div>
+        <div class="dc-status" id="dOvertime" style="color:var(--green)">—</div>
+        <div class="dc-detail" id="dOvertimeSub">IBM HR baseline</div>
+      </div>
+      <div class="drift-card">
+        <div class="dc-name">Monthly Income</div>
+        <div class="dc-status" id="dIncome" style="color:var(--green)">—</div>
+        <div class="dc-detail" id="dIncomeSub">IBM HR training distribution</div>
+      </div>
+      <div class="drift-card">
+        <div class="dc-name">Prediction Rate</div>
+        <div class="dc-status" id="dPredRate" style="color:var(--txt3)">—</div>
+        <div class="dc-detail" id="dPredRateSub">No quarterly uploads yet</div>
+      </div>
+      <div class="drift-card">
+        <div class="dc-name">Model Age</div>
+        <div class="dc-status" id="dModelAge" style="color:var(--txt3)">—</div>
+        <div class="dc-detail" id="dModelAgeSub">Weeks since last deploy</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
          DATA DRIFT VISUALISATION — Full interactive charts
     ═══════════════════════════════════════════════════════ -->
     <div class="sec-title" style="margin-bottom:.5rem;">DATA DRIFT VISUALISATION</div>
