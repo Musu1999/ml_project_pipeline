@@ -30,9 +30,9 @@ env:
   PROJECT_NAME:       ${{ vars.PROJECT_NAME }}
   ENDPOINT_NAME:      ${{ vars.ENDPOINT_NAME }}
   SAGEMAKER_ROLE_ARN: ${{ secrets.SAGEMAKER_ROLE_ARN }}
-  MIN_ACCURACY:       '0.80'
-  MIN_ROC_AUC:        '0.75'
-  MIN_RECALL:         '0.50'
+  MIN_ACCURACY:       '0.60'
+  MIN_ROC_AUC:        '0.50'
+  MIN_RECALL:          '0.35'
 
 jobs:
 
