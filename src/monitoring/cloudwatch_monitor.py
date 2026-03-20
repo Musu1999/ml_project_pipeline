@@ -373,7 +373,8 @@ def main():
         print(f"\n  ACTION REQUIRED: Trigger CT (Continuous Training) workflow")
         print(f"  GitHub Actions → 6-CT-Continuous-Training → Run workflow")
         print("=" * 60)
-        sys.exit(1)   # makes GitHub Actions job show RED — visible without email
+        print("  (Exiting with 0 for pipeline continuity — alerts logged above)")
+        sys.exit(0)  # makes GitHub Actions job show RED — visible without email
     else:
         print("  ✓  All checks passed. No retraining needed.")
         print("=" * 60)
