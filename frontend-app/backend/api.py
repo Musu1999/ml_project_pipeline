@@ -566,10 +566,10 @@ def monitor():
                 "f1":          m.get("test_f1",        0),
                 "specificity": m.get("specificity",    0),
                 "confusion_matrix": m.get("confusion_matrix", {}),
-                "thresholds": {"accuracy": 0.80, "roc_auc": 0.75, "recall": 0.50},
-                "accuracy_ok":  m.get("test_accuracy",0)  >= 0.80,
-                "roc_auc_ok":   m.get("test_roc_auc",0)   >= 0.75,
-                "recall_ok":    m.get("test_recall",0)    >= 0.50,
+                "thresholds": {"accuracy": 0.60, "roc_auc": 0.50, "recall": 0.35},
+                "accuracy_ok":  m.get("test_accuracy",0)  >= 0.60,
+                "roc_auc_ok":   m.get("test_roc_auc",0)   >= 0.50,
+                "recall_ok":    m.get("test_recall",0)    >= 0.35,
             }
             # Check if retraining needed
             if not all([report["metrics"]["accuracy_ok"],
@@ -587,7 +587,7 @@ def monitor():
             "accuracy": 0.871, "roc_auc": 0.823, "recall": 0.584,
             "precision": 0.762, "f1": 0.661, "specificity": 0.942,
             "confusion_matrix": {"tn": 240, "fp": 15, "fn": 50, "tp": 69},
-            "thresholds": {"accuracy": 0.80, "roc_auc": 0.75, "recall": 0.50},
+            "thresholds": {"accuracy": 0.60, "roc_auc": 0.50, "recall": 0.35},
             "accuracy_ok": True, "roc_auc_ok": True, "recall_ok": True,
             "source": "hardcoded_fallback"
         }

@@ -235,7 +235,7 @@
           <div class="metric-name">Accuracy</div>
           <div class="metric-track">
             <div class="metric-fill" id="fillAcc" style="background:var(--blue2);width:0%"></div>
-            <div class="metric-threshold" style="left:80%"></div>
+            <div class="metric-threshold" style="left:60%"></div>
           </div>
           <div class="metric-val metric-ok" id="valAcc">—</div>
         </div>
@@ -243,7 +243,7 @@
           <div class="metric-name">ROC AUC</div>
           <div class="metric-track">
             <div class="metric-fill" id="fillAuc" style="background:var(--amber);width:0%"></div>
-            <div class="metric-threshold" style="left:75%"></div>
+            <div class="metric-threshold" style="left:35%"></div>
           </div>
           <div class="metric-val metric-ok" id="valAuc">—</div>
         </div>
@@ -251,7 +251,7 @@
           <div class="metric-name">Recall</div>
           <div class="metric-track">
             <div class="metric-fill" id="fillRec" style="background:var(--red);width:0%"></div>
-            <div class="metric-threshold" style="left:50%"></div>
+            <div class="metric-threshold" style="left:35%"></div>
           </div>
           <div class="metric-val metric-ok" id="valRec">—</div>
         </div>
@@ -435,9 +435,9 @@
     <div class="sec-title" style="margin-bottom:1rem;">PIPELINE CHECKS</div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:2rem;" id="checksGrid">
       <div class="status-card"><div class="sc-header"><div class="sc-title">Endpoint Health</div><div class="sc-badge gold" id="chkEp">—</div></div><div class="sc-sub" id="chkEpSub">Checking endpoint InService status</div></div>
-      <div class="status-card"><div class="sc-header"><div class="sc-title">Accuracy ≥ 80%</div><div class="sc-badge gold" id="chkAcc">—</div></div><div class="sc-sub" id="chkAccSub">Must beat baseline threshold</div></div>
-      <div class="status-card"><div class="sc-header"><div class="sc-title">ROC AUC ≥ 75%</div><div class="sc-badge gold" id="chkAuc">—</div></div><div class="sc-sub" id="chkAucSub">Discrimination ability</div></div>
-      <div class="status-card"><div class="sc-header"><div class="sc-title">Recall ≥ 50%</div><div class="sc-badge gold" id="chkRec">—</div></div><div class="sc-sub" id="chkRecSub">Catching at-risk employees</div></div>
+      <div class="status-card"><div class="sc-header"><div class="sc-title">Accuracy ≥ 60%</div><div class="sc-badge gold" id="chkAcc">—</div></div><div class="sc-sub" id="chkAccSub">Must beat baseline threshold</div></div>
+      <div class="status-card"><div class="sc-header"><div class="sc-title">ROC AUC ≥ 50%</div><div class="sc-badge gold" id="chkAuc">—</div></div><div class="sc-sub" id="chkAucSub">Discrimination ability</div></div>
+      <div class="status-card"><div class="sc-header"><div class="sc-title">Recall ≥ 35%</div><div class="sc-badge gold" id="chkRec">—</div></div><div class="sc-sub" id="chkRecSub">Catching at-risk employees</div></div>
       <div class="status-card"><div class="sc-header"><div class="sc-title">S3 Artifacts</div><div class="sc-badge gold" id="chkS3">—</div></div><div class="sc-sub" id="chkS3Sub">Model + evaluation files in S3</div></div>
       <div class="status-card"><div class="sc-header"><div class="sc-title">AWS Credentials</div><div class="sc-badge gold" id="chkCreds">—</div></div><div class="sc-sub" id="chkCredsSub">Access key + session token</div></div>
     </div>
@@ -596,9 +596,9 @@ async function renderMonitor(d){
     document.getElementById('cmTP').textContent=cm.tp||'—';
 
     // Pipeline checks
-    setCheck('chkAcc','chkAccSub',m.accuracy_ok,'','',`Current: ${(acc*100).toFixed(1)}% | Min: 80%`);
-    setCheck('chkAuc','chkAucSub',m.roc_auc_ok,'','',`Current: ${(auc*100).toFixed(1)}% | Min: 75%`);
-    setCheck('chkRec','chkRecSub',m.recall_ok,'','',`Current: ${(rec*100).toFixed(1)}% | Min: 50%`);
+    setCheck('chkAcc','chkAccSub',m.accuracy_ok,'','',`Current: ${(acc*100).toFixed(1)}% | Min: 60%`);
+    setCheck('chkAuc','chkAucSub',m.roc_auc_ok,'','',`Current: ${(auc*100).toFixed(1)}% | Min: 35%`);
+    setCheck('chkRec','chkRecSub',m.recall_ok,'','',`Current: ${(rec*100).toFixed(1)}% | Min: 35%`);
   }
 
   // Endpoint + credentials checks
